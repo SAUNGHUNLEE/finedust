@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미세먼지 정보</title>
+    <link rel="stylesheet" th:href="@{/css/mainInfo.css}"/>
+</head>
+<body>
+<div class="page-container">
+    <h1>미세먼지 정보</h1>
+    <div th:if="${fineDustInfo}" class="info-container">
+        <div class="table-container">
+            <table>
+                <tr>
+                    <th>구</th>
+                    <td th:text="${fineDustInfo.measurementName}"></td>
+                </tr>
+                <tr>
+                    <th>코드번호</th>
+                    <td th:text="${fineDustInfo.measurementCode}"></td>
+                </tr>
+                <tr>
+                    <th>날짜</th>
+                    <td th:text="${#temporals.format(fineDustInfo.date, 'yyyy-MM-dd HH')}"></td>
+                </tr>
+                <tr>
+                    <th>미세먼지(PM10)</th>
+                    <td th:text="${fineDustInfo.pm10}"></td>
+                </tr>
+                <tr>
+                    <th>초미세먼지(PM2.5)</th>
+                    <td th:text="${fineDustInfo.pm2_5}"></td>
+                </tr>
+                <tr th:if="${warningResponse}">
+                    <th>경보</th>
+                    <td th:text="${warningResponse.message}"></td>
+                </tr>
+            </table>
+            <div th:if="${warningError}">
+                <p th:text="${warningError}" class="error-message"></p>
+            </div>
+        </div>
+    </div>
+</div>
+<div th:unless="${fineDustInfo}">
+    <p class="error-message">정보를 불러올 수 없습니다.</p>
+</div>
+
+</body>
+</html>
