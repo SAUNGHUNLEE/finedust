@@ -10,26 +10,26 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Controller
 @RequestMapping("/main")
-public class mainController {
+public class MainController {
+    private int lastSentIndex = 0; // 최근에 전송한 알람의 인덱스를 저장하는 변수
+
     private final AlarmIssuedRepository alarmIssuedRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
 
-    public mainController(AlarmIssuedRepository alarmIssuedRepository, SimpMessagingTemplate messagingTemplate, MainService mainService) {
+    public MainController(AlarmIssuedRepository alarmIssuedRepository, SimpMessagingTemplate messagingTemplate, MainService mainService) {
         this.alarmIssuedRepository = alarmIssuedRepository;
         this.messagingTemplate = messagingTemplate;
         this.mainService = mainService;
@@ -49,10 +49,10 @@ public class mainController {
             try{
                 AlarmIssuedDTO alarmIssuedDTO = mainService.getPmWarning(fineDustDTOInfo);
                 model.addAttribute("warningResponse", alarmIssuedDTO);
-                
+
                 CheckDayDTO checkDayDTO = mainService.getCheckDay(fineDustDTOInfo);
                 model.addAttribute("checkResponse", checkDayDTO);
-                
+
             }catch(Exception e){
                 e.printStackTrace();
                 System.out.println(e + "오류 내용");
@@ -89,27 +89,54 @@ public class mainController {
     }
 
 
-    @MessageMapping("/connect") //클->서
- /*   @SendTo("/topic/alarm")//메서드 완료후 메시지를 클라이언트로*/
-    public void refreshConnection() {
-        System.out.println("/app/connect 실행");
-        // 모든 알람 정보 조회
-        List<AlarmIssued> alarms = alarmIssuedRepository.findAllOrderByTime();
-        if (!alarms.isEmpty()) {
-            // DTO 변환
-            List<AlarmIssuedDTO> alarmsDTO = alarms.stream().map(alarm -> AlarmIssuedDTO.builder()
-                    .measurementName(alarm.getMeasurementName())
-                    .message(alarm.getMessage())
-                    .time(alarm.getTime())
-                    .build()).collect(Collectors.toList());
 
-            System.out.println(alarmsDTO.get(0) + "첫번쨰 값");
-            // 클라이언트에게 전체 알람 정보 리스트 전송
+    // 클라이언트에서 초기 데이터 요청을 처리하는 메소드
+
+    @MessageMapping("/loadInitialAlarms")
+    public void loadInitialAlarms() {
+        System.out.println("loadInitialAlars 통과");
+        List<AlarmIssued> alarms = alarmIssuedRepository.findAllOrderByTime();
+        List<AlarmIssuedDTO> alarmsDTO = alarms.stream()
+                .map(alarm -> AlarmIssuedDTO.builder()
+                        .id(alarm.getId())
+                        .measurementName(alarm.getMeasurementName())
+                        .message(alarm.getMessage())
+                        .time(alarm.getTime())
+                        .build())
+                .collect(Collectors.toList());
+
+        System.out.println(alarmsDTO + "controller");
+        messagingTemplate.convertAndSend("/topic/alarm", alarmsDTO);
+    }
+
+
+  /*
+  @MessageMapping("/connect") // 클->서
+    public void refreshConnection(@Payload Map<String, Object> payload) {
+        int clientLastSentIndex = Integer.parseInt(payload.get("lastSentIndex").toString());
+        lastSentIndex = Math.max(lastSentIndex, clientLastSentIndex);
+        System.out.println("/app/connect 첫번째연결");
+        // 이미 전송한 알람 중 lastSentIndex 이후의 알람만 조회
+        List<AlarmIssued> newAlarms = alarmIssuedRepository.findAlarmsAfter(lastSentIndex);
+
+        if (!newAlarms.isEmpty()) {
+            List<AlarmIssuedDTO> alarmsDTO = newAlarms.stream()
+                    .map(alarm -> AlarmIssuedDTO.builder()
+                            .measurementName(alarm.getMeasurementName())
+                            .message(alarm.getMessage())
+                            .time(alarm.getTime())
+                            .build())
+                    .collect(Collectors.toList());
+
             messagingTemplate.convertAndSend("/topic/alarm", alarmsDTO);
-        } else {
-            // 알람 정보가 없을 경우, 적절한 메시지 전송
-            messagingTemplate.convertAndSend("/topic/alarm", Collections.emptyList());
+
+            // 최신으로 전송한 알람의 인덱스 업데이트
+            lastSentIndex = newAlarms.get(newAlarms.size() - 1).getId();
         }
     }
+    */
+
+
+
 
 }

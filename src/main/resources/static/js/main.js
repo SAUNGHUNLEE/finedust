@@ -46,66 +46,91 @@ async function submitForm(event) {
 
 
 }
+
+function click() {
+    var alarmContent = document.getElementById('alarmNotifications');
+    alarmContent.style.display = alarmContent.style.display === 'none' ? 'block' : 'none';
+}
+
+document.getElementById('alarmHeader').addEventListener('click', click);
+
 let stompClient = null;
+let displayedAlarms = new Set(); // 화면에 표시된 알람 ID를 저장하는 Set
 
-
-function connect(){
+function connect() {
     let socket = new SockJS('/ws/alarm');
     stompClient = Stomp.over(socket);
-    stompClient.connect({}, function(frame){
+    stompClient.connect({}, function (frame) {
         console.log('연결 :' + frame);
 
         //서버->클라
         //alarm -> 서비스 getAlarmView 메서드에 alarmIssuedDTO
-        stompClient.subscribe('/topic/alarm',function(alarm){
-            let alarmMessage = JSON.parse(alarm.body);
-            if (Array.isArray(alarmMessages)) {
-                alarmMessages.forEach(alarmMessage => {
-                    displayAlarmMessage(alarmMessage.measurementName, alarmMessage.message, alarmMessage.time);
-                });
-            } else {
-                // 서버로부터 받은 메시지가 배열이 아닌 단일 객체인 경우
-                displayAlarmMessage(alarmMessages.measurementName, alarmMessages.message, alarmMessages.time);
-            }
-        })
-        // 연결 후 서버에 첫 번째 알람 정보를 요청합니다.
-        stompClient.send("/app/connect", {}, {});
-    });
-}
+        stompClient.subscribe('/topic/alarm', function (alarm) {
+            let alarmMessages = JSON.parse(alarm.body);
+            let deletedAlarmInfo = JSON.parse(localStorage.getItem("deletedAlarms")) || [];
 
-function displayAlarmMessage(measurementName,alarmMessage,time){
-    let alarmList = document.getElementById('alarmNotifications');
-    let messageElement = document.createElement('div');
-    messageElement.classList.add('alarm-message');
-    messageElement.innerText = "경보 알람 메시지 : " + measurementName + ": " + alarmMessage + "  시간은 : " + time;
-    alarmList.appendChild(messageElement);
-}
+            alarmMessages.forEach(message => {
+                // 이미 화면에 표시된 알람이 아닐 경우에만 추가
+                if (!displayedAlarms.has(message.id)) {
+                    displayAlarmMessage(message.id, message.measurementName, message.message, message.time);
+                    displayedAlarms.add(message.id); // Set에 알람 ID 추가
+                }
+            });
+        });
 
+        // 최초 페이지 로드 시에만 서버에 초기 알람 목록을 요청
+            stompClient.send("/app/loadInitialAlarms", {}, {});
 
-
-// 알람 정보를 로컬 스토리지에 저장합니다.
-function saveAlarmToLocalStorage(alarmInfo) {
-    // 로컬 스토리지에서 알람 정보 배열을 가져옵니다.
-    var alarms = JSON.parse(localStorage.getItem("alarms")) || [];
-    alarms.push(alarmInfo);
-    localStorage.setItem("alarms", JSON.stringify(alarms));
-}
-
-
-
-
-// 페이지 로드 시 로컬 스토리지에서 알람 정보를 불러와서 표시합니다.
-function loadAlarmsFromLocalStorage() {
-    var alarms = JSON.parse(localStorage.getItem("alarms")) || [];
-    alarms.forEach(function(alarmInfo) {
-        displayAlarm(alarmInfo);
     });
 }
 
 
+function displayAlarmMessage(id, measurementName, alarmMessage, time) {
+    // 로컬 스토리지에서 삭제된 알람 목록을 가져옵니다.
+    let deletedAlarms = JSON.parse(localStorage.getItem("deletedAlarms")) || [];
 
-window.onload = function() {
-    // DOM 로드 완료 후 WebSocket 연결
+    // 현재 알람 ID가 삭제된 알람 목록에 없는 경우에만 알람을 화면에 추가합니다.
+    if (!deletedAlarms.includes(id)) {
+        let alarmList = document.getElementById('alarmNotifications');
+        let messageElement = document.createElement('div');
+        messageElement.classList.add('alarm-message');
+        messageElement.id = `alarm-${id}`;
+        messageElement.innerText = `경보 알람 메시지: ${measurementName}: ${alarmMessage} 시간은: ${time}`;
+        alarmList.appendChild(messageElement);
+
+        let deleteButton = document.createElement('button');
+        deleteButton.innerHTML = '삭제';
+        deleteButton.onclick = function () {
+            deleteAlarmView(id);
+        };
+        messageElement.appendChild(deleteButton);
+    }
+}
+
+
+
+function deleteAlarmView(id) {
+    const alarmElement = document.getElementById(`alarm-${id}`);
+    if (alarmElement) {
+        alarmElement.remove();
+    }
+    removeFromLocalStorage(id);
+}
+
+function removeFromLocalStorage(id) {
+    if (id === null || id === undefined) {
+        console.error('유효하지 않은 id값');
+        return;
+    }
+
+    let deletedAlarms = JSON.parse(localStorage.getItem("deletedAlarms")) || [];
+    if (!deletedAlarms.includes(id)) {
+        deletedAlarms.push(id);
+        localStorage.setItem("deletedAlarms", JSON.stringify(deletedAlarms));
+    }
+}
+
+window.onload = function () {
     connect();
 };
 

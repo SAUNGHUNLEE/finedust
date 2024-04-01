@@ -11,6 +11,7 @@ import com.finedust.project.finedust.model.FineDust;
 import com.finedust.project.finedust.persistence.AlarmIssuedRepository;
 import com.finedust.project.finedust.persistence.CheckDayRepository;
 import com.finedust.project.finedust.persistence.FineDustRepository;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -203,16 +204,30 @@ public class MainService {
     }
 
 
-    @Scheduled(fixedRate = 10000) // 10초마다 실행
+    //서버->클라이언트
+    public void addAlarm(AlarmIssued newAlarm) {
+        // 알람 데이터를 DB에 추가하는 로직
+        AlarmIssued savedAlarm = alarmIssuedRepository.save(newAlarm);
+
+        // 신규 알람을 클라이언트에게 전송
+        AlarmIssuedDTO alarmDTO = AlarmIssuedDTO.builder()
+                .id(savedAlarm.getId())
+                .measurementName(savedAlarm.getMeasurementName())
+                .message(savedAlarm.getMessage())
+                .time(savedAlarm.getTime())
+                .build();
+
+        // 전체 클라이언트에게 새로운 알람 데이터를 전송합니다.
+        messagingTemplate.convertAndSend("/topic/alarm", alarmDTO);
+    }
+  /*  @Scheduled(fixedRate = 10000) // 10초마다 실행
     public void getAlarmView() {
         List<AlarmIssued> alarmIssuedInfo = alarmIssuedRepository.findAllOrderByTime();
         if (alarmIssuedInfo.isEmpty()) {
             messagingTemplate.convertAndSend("/topic", "3월달 경보 발령 정보가 없습니다.");
             return;
         }
-        if(allAlarmsSent){
-            return;
-        }
+
         System.out.println(alarmIssuedInfo.size() + "알림 사이즈");
         if(currentIndex < alarmIssuedInfo.size()){
             AlarmIssued alarmIssued = alarmIssuedInfo.get(currentIndex++);
@@ -223,10 +238,14 @@ public class MainService {
                     .build();
             messagingTemplate.convertAndSend("/topic/alarm", alarmIssuedDTO); //서버->클라이언트
             System.out.println(alarmIssuedDTO + "정보");
-        } else {
-            allAlarmsSent = true;
+
+
+        }  else {
+            // 모든 알람이 전송되었을 때의 로직을 여기에 구현
+            System.out.println("모든 알람이 전송되었습니다.");
+
         }
-    }
+    }*/
 
 
 
