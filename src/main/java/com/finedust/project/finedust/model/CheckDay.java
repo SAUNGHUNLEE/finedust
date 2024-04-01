@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -24,12 +25,14 @@ public class CheckDay {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH")
     @Column(name = "check_time")
-    private Timestamp checkTime;  //점검날짜
+    private LocalDateTime checkTime;  //점검날짜
 
     @Column(name = "measurement_name")
     private String measurementName;
 
-
     @Column(name = "measurementCode")
     private String measurementCode;
+
+    @Column(name = "message")
+    private String message;
 }

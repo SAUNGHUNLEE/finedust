@@ -23,8 +23,8 @@ public interface FineDustRepository extends JpaRepository<FineDust, Integer> {
     List<FineDust> findFineDustByPmChoice(@Param("measurementName") String measurementName,@Param("beforeDate") LocalDateTime beforeDate,@Param("currentDate") LocalDateTime currentDate);
 
     //pm10,pm2.5가 모두 0인경우
-    @Query(value = "SELECT * FROM fine_dust WHERE measurement_name = :measurementName AND pm10 = 0 AND pm2_5 = 0",nativeQuery = true)
-    List<FineDust> findCheckDay(@Param("measurementName") String measurementName);
+    @Query(value = "SELECT * FROM fine_dust WHERE measurement_name = :measurementName AND pm10 = 0 AND pm2_5 = 0 AND date= :dateTime",nativeQuery = true)
+    Optional<FineDust> findCheckDay(@Param("measurementName") String measurementName,@Param("dateTime") LocalDateTime dateTime);
 
 }
 

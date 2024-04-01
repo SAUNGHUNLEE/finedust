@@ -4,40 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>서울시 25개구 2023년 3월 미세먼지 현황</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
     <link rel="stylesheet" th:href="@{/css/main.css}" />
 </head>
 
 <div class="grid-container" onclick="selectDateAndTime(event.target.innerText)">
-    <div class="grid-item">종로구</div>
-    <div class="grid-item">중구</div>
-    <div class="grid-item">용산구</div>
-    <div class="grid-item">성동구</div>
-    <div class="grid-item">광진구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">종로구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">중구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">용산구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">성동구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">광진구</div>
 
-    <div class="grid-item">동대문구</div>
-    <div class="grid-item">중랑구</div>
-    <div class="grid-item">성북구</div>
-    <div class="grid-item">강북구</div>
-    <div class="grid-item">도봉구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">동대문구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">중랑구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">성북구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">강북구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">도봉구</div>
 
-    <div class="grid-item">노원구</div>
-    <div class="grid-item">은평구</div>
-    <div class="grid-item">서대문구</div>
-    <div class="grid-item">마포구</div>
-    <div class="grid-item">양천구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">노원구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">은평구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">서대문구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">마포구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">양천구</div>
 
-    <div class="grid-item">강서구</div>
-    <div class="grid-item">구로구</div>
-    <div class="grid-item">금천구</div>
-    <div class="grid-item">영등포구</div>
-    <div class="grid-item">동작구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">강서구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">구로구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">금천구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">영등포구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">동작구</div>
 
-    <div class="grid-item">관악구</div>
-    <div class="grid-item">서초구</div>
-    <div class="grid-item">강남구</div>
-    <div class="grid-item">송파구</div>
-    <div class="grid-item">강동구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">관악구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">서초구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">강남구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">송파구</div>
+    <div class="grid-item" onclick="selectDateAndTime(event, this.innerText)">강동구</div>
 </div>
+<div id="alarmNotifications">알람</div>
 
 <!-- 날짜 및 시간 선택 폼을 표시할 div 요소 -->
 <div id="datePicker"></div>

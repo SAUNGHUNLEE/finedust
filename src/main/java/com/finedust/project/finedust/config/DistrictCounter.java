@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class DistrictCounter {
     
-    //json -> java 객체 변환 리스트 -> dataLoader에서 받아서 db저장
+    //dataLoader에서 받아서 db저장
  /*  public List<FineDust> parseJsonFile(String filePath){
         ObjectMapper objectMapper = new ObjectMapper();
         List<FineDust> fineDustList = null;

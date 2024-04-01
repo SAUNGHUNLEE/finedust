@@ -1,12 +1,18 @@
 package com.finedust.project.finedust.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.finedust.project.finedust.dto.AlarmIssuedDTO;
+import com.finedust.project.finedust.dto.CheckDayDTO;
 import com.finedust.project.finedust.dto.FineDustDTO;
 import com.finedust.project.finedust.model.AlarmIssued;
+import com.finedust.project.finedust.model.CheckDay;
 import com.finedust.project.finedust.model.FineDust;
 import com.finedust.project.finedust.persistence.AlarmIssuedRepository;
+import com.finedust.project.finedust.persistence.CheckDayRepository;
 import com.finedust.project.finedust.persistence.FineDustRepository;
-import lombok.AllArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,11 +26,17 @@ public class MainService {
 
     private final FineDustRepository fineDustRepository;
     private final AlarmIssuedRepository alarmIssuedRepository;
+    private final CheckDayRepository checkDayRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+    private static final Logger logger = LoggerFactory.getLogger(MainService.class);
 
-
-    public MainService(FineDustRepository fineDustRepository, AlarmIssuedRepository alarmIssuedRepository) {
+    private int currentIndex = 0;
+    private boolean allAlarmsSent = false;
+    public MainService(FineDustRepository fineDustRepository, AlarmIssuedRepository alarmIssuedRepository, CheckDayRepository checkDayRepository, SimpMessagingTemplate messagingTemplate) {
         this.fineDustRepository = fineDustRepository;
         this.alarmIssuedRepository = alarmIssuedRepository;
+        this.checkDayRepository = checkDayRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     // 구 + 날짜 선택 시 상세정보
@@ -51,14 +63,14 @@ public class MainService {
         }
     }
 
-/***
-    pm10 150이상 이며 2시간 이상 지속시 주의보 발령 , 300이상 경보
-    pm2.5 75이상 이며 2시간 이상 지속시 주의보 발령 , 150이상 경보
-    미세먼지 정보를 가지고, 요구사항에 해당하면 AlarmIssued테이블에 저장되는 메서드
-    날짜,시간,구 선택시 해당 정보가 기준. -2시간 해서 150이상인지 확인(연속적이어야함)
+    /***
+     pm10 150이상 이며 2시간 이상 지속시 주의보 발령 , 300이상 경보
+     pm2.5 75이상 이며 2시간 이상 지속시 주의보 발령 , 150이상 경보
+     미세먼지 정보를 가지고, 요구사항에 해당하면 AlarmIssued테이블에 저장되는 메서드
+     날짜,시간,구 선택시 해당 정보가 기준. -2시간 해서 150이상인지 확인(연속적이어야함)
 
-    미세먼지(pm10) 2,4 , 초미세먼지(pm2.5) 1,3  조건 두개 다 충족되면 1에 가까운 숫자 선택(심각도)
- ***/
+     미세먼지(pm10) 2,4 , 초미세먼지(pm2.5) 1,3  조건 두개 다 충족되면 1에 가까운 숫자 선택(심각도)
+     ***/
     public AlarmIssuedDTO getPmWarning(FineDustDTO fineDustDTO) {
         LocalDateTime currentDateTime = fineDustDTO.getDate();//선택한시간
         LocalDateTime beforeDateTime = currentDateTime.minusHours(2);
@@ -143,5 +155,80 @@ public class MainService {
                     .build();
         }
     }
+
+    /***
+     * FindDust테이블에서 pm10,pm2.5가 0인 결과를 repository에서 다가져온다
+     * 경보발령 메서드처럼, 상세정보 페이지에 들어갈때, 조건에 해당하면 checkDay테이블에 값 저장
+     */
+    public CheckDayDTO getCheckDay(FineDustDTO fineDustDTO) {
+        Optional<FineDust> fineDust = fineDustRepository.findCheckDay(fineDustDTO.getMeasurementName(), fineDustDTO.getDate());
+
+        if (fineDust.isPresent()) {
+            Optional<CheckDay> checkDay = checkDayRepository.findByMeasurementNameAndCheckTime(fineDust.get().getMeasurementName(), fineDust.get().getDate());
+
+            if (!checkDay.isPresent()) {
+                CheckDay checkDays = CheckDay.builder()
+                        .measurementName(fineDust.get().getMeasurementName())
+                        .measurementCode(fineDust.get().getMeasurementCode())
+                        .checkTime(fineDust.get().getDate())
+                        .message("정기 점검이 있던 날입니다.")
+                        .build();
+
+                checkDayRepository.save(checkDays);
+
+                CheckDayDTO checkDayDTO = CheckDayDTO.builder()
+                        .measurementName(checkDays.getMeasurementName())
+                        .measurementCode(checkDays.getMeasurementCode())
+                        .checkTime(checkDays.getCheckTime())
+                        .message(checkDays.getMessage())
+                        .build();
+
+                return checkDayDTO;
+            } else {
+                return CheckDayDTO.builder()
+                        .measurementName(checkDay.get().getMeasurementName())
+                        .measurementCode(checkDay.get().getMeasurementCode())
+                        .checkTime(checkDay.get().getCheckTime())
+                        .message(checkDay.get().getMessage())
+                        .build();
+            }
+        } else {
+            return CheckDayDTO.builder()
+                    .measurementName(fineDustDTO.getMeasurementName())
+                    .measurementCode(fineDustDTO.getMeasurementCode())
+                    .checkTime(fineDustDTO.getDate())
+                    .message("정기점검 날이 아닙니다.")
+                    .build();
+        }
+    }
+
+
+    @Scheduled(fixedRate = 10000) // 10초마다 실행
+    public void getAlarmView() {
+        List<AlarmIssued> alarmIssuedInfo = alarmIssuedRepository.findAllOrderByTime();
+        if (alarmIssuedInfo.isEmpty()) {
+            messagingTemplate.convertAndSend("/topic", "3월달 경보 발령 정보가 없습니다.");
+            return;
+        }
+        if(allAlarmsSent){
+            return;
+        }
+        System.out.println(alarmIssuedInfo.size() + "알림 사이즈");
+        if(currentIndex < alarmIssuedInfo.size()){
+            AlarmIssued alarmIssued = alarmIssuedInfo.get(currentIndex++);
+            AlarmIssuedDTO alarmIssuedDTO = AlarmIssuedDTO.builder()
+                    .measurementName(alarmIssued.getMeasurementName())
+                    .message(alarmIssued.getMessage())
+                    .time(alarmIssued.getTime())
+                    .build();
+            messagingTemplate.convertAndSend("/topic/alarm", alarmIssuedDTO); //서버->클라이언트
+            System.out.println(alarmIssuedDTO + "정보");
+        } else {
+            allAlarmsSent = true;
+        }
+    }
+
+
+
 
 }

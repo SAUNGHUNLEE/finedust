@@ -36,6 +36,10 @@
                     <th>경보</th>
                     <td th:text="${warningResponse.message}"></td>
                 </tr>
+                <tr th:if="${checkResponse}">
+                    <th>점검정보</th>
+                    <td th:text="${checkResponse.message}"></td>
+                </tr>
             </table>
             <div th:if="${warningError}">
                 <p th:text="${warningError}" class="error-message"></p>
