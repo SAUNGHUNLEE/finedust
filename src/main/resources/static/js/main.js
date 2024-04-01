@@ -67,13 +67,17 @@ function connect() {
         //alarm -> 서비스 getAlarmView 메서드에 alarmIssuedDTO
         stompClient.subscribe('/topic/alarm', function (alarm) {
             let alarmMessages = JSON.parse(alarm.body);
-            let deletedAlarmInfo = JSON.parse(localStorage.getItem("deletedAlarms")) || [];
 
-            alarmMessages.forEach(message => {
+
+            if (!Array.isArray(alarmMessages)) {
+                alarmMessages = [alarmMessages];
+            }
+
+            alarmMessages.forEach(alarmMessages => {
                 // 이미 화면에 표시된 알람이 아닐 경우에만 추가
-                if (!displayedAlarms.has(message.id)) {
-                    displayAlarmMessage(message.id, message.measurementName, message.message, message.time);
-                    displayedAlarms.add(message.id); // Set에 알람 ID 추가
+                if (!displayedAlarms.has(alarmMessages.id)) {
+                    displayAlarmMessage(alarmMessages.id, alarmMessages.measurementName, alarmMessages.message, alarmMessages.time);
+                    displayedAlarms.add(alarmMessages.id); // Set에 알람 ID 추가
                 }
             });
         });
@@ -83,13 +87,20 @@ function connect() {
 
     });
 }
+function disconnect() {
+    if (stompClient !== null) {
+        stompClient.disconnect(function() {
+            console.log("Disconnected");
+        });
+    }
+}
 
 
 function displayAlarmMessage(id, measurementName, alarmMessage, time) {
-    // 로컬 스토리지에서 삭제된 알람 목록을 가져옵니다.
+    // 로컬 스토리지에서 삭제된 알람 목록
     let deletedAlarms = JSON.parse(localStorage.getItem("deletedAlarms")) || [];
 
-    // 현재 알람 ID가 삭제된 알람 목록에 없는 경우에만 알람을 화면에 추가합니다.
+    // 현재 알람 ID가 삭제된 알람 목록에 없는 경우에만 알람을 화면에 추가
     if (!deletedAlarms.includes(id)) {
         let alarmList = document.getElementById('alarmNotifications');
         let messageElement = document.createElement('div');
@@ -133,5 +144,5 @@ function removeFromLocalStorage(id) {
 window.onload = function () {
     connect();
 };
-
+window.onbeforeunload = disconnect;
 

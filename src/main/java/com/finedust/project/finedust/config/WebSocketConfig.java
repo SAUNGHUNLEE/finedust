@@ -19,7 +19,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // 메시지를 발행 요청 url => 즉 메시지 받을 때, 서 -> 클
-        registry.enableSimpleBroker("/topic");
+        registry.enableSimpleBroker("/topic/alarm");
         // 즉 메시지 보낼 때,  클 -> 서
         registry.setApplicationDestinationPrefixes("/app");
     }

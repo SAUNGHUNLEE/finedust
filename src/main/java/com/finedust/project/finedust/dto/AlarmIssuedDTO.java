@@ -17,4 +17,6 @@ public class AlarmIssuedDTO {
     private int warningLevel;
     private LocalDateTime time;
     private String message;
+
+
 }

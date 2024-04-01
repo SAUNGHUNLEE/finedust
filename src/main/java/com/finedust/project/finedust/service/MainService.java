@@ -129,7 +129,7 @@ public class MainService {
                         .time(currentDateTime)
                         .message(finalWarningLevel + "단계 경보발령")
                         .build();
-                alarmIssuedRepository.save(alarmIssued);
+                AlarmIssued savedAlarm = alarmIssuedRepository.save(alarmIssued);
 
                 AlarmIssuedDTO alarmIssuedDTO = AlarmIssuedDTO.builder()
                         .measurementName(alarmIssued.getMeasurementName())
@@ -137,6 +137,10 @@ public class MainService {
                         .time(alarmIssued.getTime())
                         .message(finalWarningLevel + "단계 경보발령")
                         .build();
+
+                // 클라이언트에게 실시간으로 알람 전송
+                addAlarm(savedAlarm);
+
                 return alarmIssuedDTO;
 
             } else {
@@ -206,20 +210,24 @@ public class MainService {
 
     //서버->클라이언트
     public void addAlarm(AlarmIssued newAlarm) {
-        // 알람 데이터를 DB에 추가하는 로직
-        AlarmIssued savedAlarm = alarmIssuedRepository.save(newAlarm);
+        System.out.println("addAlarm메서드 시작");
 
         // 신규 알람을 클라이언트에게 전송
         AlarmIssuedDTO alarmDTO = AlarmIssuedDTO.builder()
-                .id(savedAlarm.getId())
-                .measurementName(savedAlarm.getMeasurementName())
-                .message(savedAlarm.getMessage())
-                .time(savedAlarm.getTime())
+                .id(newAlarm.getId())
+                .measurementName(newAlarm.getMeasurementName())
+                .message(newAlarm.getMessage())
+                .time(newAlarm.getTime())
                 .build();
 
-        // 전체 클라이언트에게 새로운 알람 데이터를 전송합니다.
+        // 전체 클라이언트에게 새로운 알람 데이터를 전송
         messagingTemplate.convertAndSend("/topic/alarm", alarmDTO);
+        System.out.println(messagingTemplate + "service에 잘 작동중?");
+
     }
+
+
+
   /*  @Scheduled(fixedRate = 10000) // 10초마다 실행
     public void getAlarmView() {
         List<AlarmIssued> alarmIssuedInfo = alarmIssuedRepository.findAllOrderByTime();
@@ -246,8 +254,5 @@ public class MainService {
 
         }
     }*/
-
-
-
 
 }
