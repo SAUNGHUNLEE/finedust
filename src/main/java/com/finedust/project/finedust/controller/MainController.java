@@ -50,6 +50,7 @@ public class MainController {
                 AlarmIssuedDTO alarmIssuedDTO = mainService.getPmWarning(fineDustDTOInfo);
                 model.addAttribute("warningResponse", alarmIssuedDTO);
 
+                
                 CheckDayDTO checkDayDTO = mainService.getCheckDay(fineDustDTOInfo);
                 model.addAttribute("checkResponse", checkDayDTO);
 
@@ -109,31 +110,6 @@ public class MainController {
     }
 
 
-  /*
-  @MessageMapping("/connect") // 클->서
-    public void refreshConnection(@Payload Map<String, Object> payload) {
-        int clientLastSentIndex = Integer.parseInt(payload.get("lastSentIndex").toString());
-        lastSentIndex = Math.max(lastSentIndex, clientLastSentIndex);
-        System.out.println("/app/connect 첫번째연결");
-        // 이미 전송한 알람 중 lastSentIndex 이후의 알람만 조회
-        List<AlarmIssued> newAlarms = alarmIssuedRepository.findAlarmsAfter(lastSentIndex);
-
-        if (!newAlarms.isEmpty()) {
-            List<AlarmIssuedDTO> alarmsDTO = newAlarms.stream()
-                    .map(alarm -> AlarmIssuedDTO.builder()
-                            .measurementName(alarm.getMeasurementName())
-                            .message(alarm.getMessage())
-                            .time(alarm.getTime())
-                            .build())
-                    .collect(Collectors.toList());
-
-            messagingTemplate.convertAndSend("/topic/alarm", alarmsDTO);
-
-            // 최신으로 전송한 알람의 인덱스 업데이트
-            lastSentIndex = newAlarms.get(newAlarms.size() - 1).getId();
-        }
-    }
-    */
 
 
 

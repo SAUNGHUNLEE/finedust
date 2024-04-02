@@ -33,6 +33,7 @@ public class MainService {
 
     private int currentIndex = 0;
     private boolean allAlarmsSent = false;
+
     public MainService(FineDustRepository fineDustRepository, AlarmIssuedRepository alarmIssuedRepository, CheckDayRepository checkDayRepository, SimpMessagingTemplate messagingTemplate) {
         this.fineDustRepository = fineDustRepository;
         this.alarmIssuedRepository = alarmIssuedRepository;
@@ -73,20 +74,26 @@ public class MainService {
      미세먼지(pm10) 2,4 , 초미세먼지(pm2.5) 1,3  조건 두개 다 충족되면 1에 가까운 숫자 선택(심각도)
      ***/
     public AlarmIssuedDTO getPmWarning(FineDustDTO fineDustDTO) {
+        System.out.println(fineDustDTO + "fineDustDTO");
         LocalDateTime currentDateTime = fineDustDTO.getDate();//선택한시간
         LocalDateTime beforeDateTime = currentDateTime.minusHours(2);
+        System.out.println(currentDateTime + "선택한시간");
+        System.out.println(beforeDateTime + "  :2시간 전인 시간");
         List<FineDust> fineDustList = fineDustRepository.findFineDustByPmChoice(fineDustDTO.getMeasurementName(), beforeDateTime, currentDateTime);
-
+        System.out.println(fineDustList + "내가 선택한 정보");
         fineDustList.sort(Comparator.comparing(FineDust::getDate));
 
         boolean isContinuous = false;
         int continuousCount = 0;
         LocalDateTime lastDateTime = null;
 
-        for (FineDust fineDust : fineDustList) {
+
+        for (int i = 0; i < fineDustList.size(); i++) {
+            FineDust fineDust = fineDustList.get(i);
             // 연속된 시간 체크 로직
             if (lastDateTime == null || fineDust.getDate().minusHours(1).equals(lastDateTime)) {
                 continuousCount++;
+                System.out.println(continuousCount + "연속된 갯수");
                 if (continuousCount >= 2) {
                     isContinuous = true;
                     break;
@@ -95,33 +102,55 @@ public class MainService {
                 continuousCount = 1; // 연속이 끊기면 카운트 리셋
             }
             lastDateTime = fineDust.getDate();
+            System.out.println(lastDateTime + "시작한 날짜");
         }
 
         int pm10Level = 0;
         int pm2_5Level = 0;
 
         if (isContinuous) {
+            System.out.println(isContinuous + "참 혹은 거짓");
             for (FineDust fineDust : fineDustList) {
                 if (fineDust.getPm10() >= 300) {
+                    System.out.println(fineDust + "300 넘는 정보");
                     pm10Level = Math.max(pm10Level, 2); // 경보
+                    System.out.println(pm10Level + "경보 2");
                 } else if (fineDust.getPm10() >= 150) {
+                    System.out.println(fineDust + "150 넘는 정보");
                     pm10Level = Math.max(pm10Level, 4); // 주의보
+                    System.out.println(pm10Level + "경보 4");
                 }
 
                 if (fineDust.getPm2_5() >= 150) {
+                    System.out.println(fineDust + "2.5 가 150 넘는 정보");
                     pm2_5Level = Math.max(pm2_5Level, 1); // 경보
+                    System.out.println(pm2_5Level + "경보 1");
                 } else if (fineDust.getPm2_5() >= 75) {
+                    System.out.println(fineDust + "2.5 가 75 넘는 정보");
                     pm2_5Level = Math.max(pm2_5Level, 3); // 주의보
+                    System.out.println(pm2_5Level + "경보 3");
                 }
             }
         }
 
+
         // 둘다 조건 충족 시 level 1에 가까우면 채택
-        int finalWarningLevel = Math.min(pm10Level, pm2_5Level);
+        int finalWarningLevel = 0;
+        if(pm10Level != 0 && pm2_5Level !=0){
+            finalWarningLevel = Math.min(pm10Level, pm2_5Level);
+        }else if(pm10Level == 0 && pm2_5Level != 0){
+            finalWarningLevel = pm2_5Level;
+        }else if(pm10Level !=0 && pm2_5Level == 0){
+            finalWarningLevel = pm10Level;
+        }
+
+
+        System.out.println(finalWarningLevel + "경고 레벨 선택");
+
 
         if (finalWarningLevel > 0) {
-            Optional<AlarmIssued> existingAlarm = alarmIssuedRepository.findByMeasurementNameAndTime(fineDustDTO.getMeasurementName(), currentDateTime);
-
+            Optional<AlarmIssued> existingAlarm = alarmIssuedRepository.findByMeasurementName(fineDustDTO.getMeasurementName());
+            System.out.println(existingAlarm + "경보 울리는 날짜 정보");
             if (!existingAlarm.isPresent()) {
                 AlarmIssued alarmIssued = AlarmIssued.builder()
                         .measurementName(fineDustDTO.getMeasurementName())
@@ -152,12 +181,15 @@ public class MainService {
                         .build();
             }
         } else {
+            System.out.println("경보 울리지않는 날짜 위치");
             return AlarmIssuedDTO.builder()
                     .measurementName(fineDustDTO.getMeasurementName())
                     .warningLevel(0)
                     .time(currentDateTime)
                     .message("경보발령 기준에 충족하지 않는 날입니다. pm10이 150이상 혹은 300이상, pm2.5이 75이상 혹은 150이상이 2시간 이상 지속되어야합니다.")
                     .build();
+
+
         }
     }
 
@@ -226,33 +258,5 @@ public class MainService {
 
     }
 
-
-
-  /*  @Scheduled(fixedRate = 10000) // 10초마다 실행
-    public void getAlarmView() {
-        List<AlarmIssued> alarmIssuedInfo = alarmIssuedRepository.findAllOrderByTime();
-        if (alarmIssuedInfo.isEmpty()) {
-            messagingTemplate.convertAndSend("/topic", "3월달 경보 발령 정보가 없습니다.");
-            return;
-        }
-
-        System.out.println(alarmIssuedInfo.size() + "알림 사이즈");
-        if(currentIndex < alarmIssuedInfo.size()){
-            AlarmIssued alarmIssued = alarmIssuedInfo.get(currentIndex++);
-            AlarmIssuedDTO alarmIssuedDTO = AlarmIssuedDTO.builder()
-                    .measurementName(alarmIssued.getMeasurementName())
-                    .message(alarmIssued.getMessage())
-                    .time(alarmIssued.getTime())
-                    .build();
-            messagingTemplate.convertAndSend("/topic/alarm", alarmIssuedDTO); //서버->클라이언트
-            System.out.println(alarmIssuedDTO + "정보");
-
-
-        }  else {
-            // 모든 알람이 전송되었을 때의 로직을 여기에 구현
-            System.out.println("모든 알람이 전송되었습니다.");
-
-        }
-    }*/
 
 }

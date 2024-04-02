@@ -15,7 +15,8 @@ import java.util.Optional;
 @Repository
 public interface AlarmIssuedRepository extends JpaRepository<AlarmIssued, Integer> {
 
-    Optional<AlarmIssued> findByMeasurementNameAndTime(String measurementName, LocalDateTime time);
+    @Query(value = "SELECT * FROM alarm_issued WHERE measurement_name = :measurementName", nativeQuery = true)
+    Optional<AlarmIssued> findByMeasurementName(@Param("measurementName") String measurementName);
 
     @Query(value = "SELECT * FROM alarm_issued ORDER BY time asc",nativeQuery = true)
     List<AlarmIssued> findAllOrderByTime();

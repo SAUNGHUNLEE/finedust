@@ -1,3 +1,4 @@
+
 function selectDateAndTime(event, districtName) {
     event.stopPropagation();
 
@@ -54,7 +55,11 @@ function click() {
 
 document.getElementById('alarmHeader').addEventListener('click', click);
 
-let stompClient = null;
+
+/*let stompClient = new StompJs.Client({
+    brokerURL : 'ws//localhost:8090/ws/alarm'
+});*/
+let stompCLient = null;
 let displayedAlarms = new Set(); // 화면에 표시된 알람 ID를 저장하는 Set
 
 function connect() {
@@ -83,8 +88,14 @@ function connect() {
         });
 
         // 최초 페이지 로드 시에만 서버에 초기 알람 목록을 요청
+        // 현재는 아래와 같은 방법을 더 선호한다함
             stompClient.send("/app/loadInitialAlarms", {}, {});
 
+       /*     stompClient.publish({
+                destination: "/app/ws",
+                body:'{}',
+                headers:{}
+            });*/
     });
 }
 function disconnect() {
