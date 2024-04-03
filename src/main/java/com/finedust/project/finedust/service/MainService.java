@@ -91,15 +91,16 @@ public class MainService {
         for (int i = 0; i < fineDustList.size(); i++) {
             FineDust fineDust = fineDustList.get(i);
             // 연속된 시간 체크 로직
-            if (lastDateTime == null || fineDust.getDate().minusHours(1).equals(lastDateTime)) {
+            if (lastDateTime == null || (fineDust.getDate().minusHours(1).equals(lastDateTime)))
+            {
                 continuousCount++;
-                System.out.println(continuousCount + "연속된 갯수");
-                if (continuousCount >= 2) {
+                System.out.println(continuousCount + "연속된 시간 및 pm조건충족");
+                if (continuousCount >= 3) {
                     isContinuous = true;
                     break;
                 }
             } else {
-                continuousCount = 1; // 연속이 끊기면 카운트 리셋
+                continuousCount = 1; // 연속이 끊기거면 리셋
             }
             lastDateTime = fineDust.getDate();
             System.out.println(lastDateTime + "시작한 날짜");
@@ -149,7 +150,7 @@ public class MainService {
 
 
         if (finalWarningLevel > 0) {
-            Optional<AlarmIssued> existingAlarm = alarmIssuedRepository.findByMeasurementName(fineDustDTO.getMeasurementName());
+            Optional<AlarmIssued> existingAlarm = alarmIssuedRepository.findByMeasurementName(fineDustDTO.getMeasurementName(),fineDustDTO.getDate());
             System.out.println(existingAlarm + "경보 울리는 날짜 정보");
             if (!existingAlarm.isPresent()) {
                 AlarmIssued alarmIssued = AlarmIssued.builder()

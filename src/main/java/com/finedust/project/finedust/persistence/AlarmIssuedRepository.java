@@ -15,16 +15,14 @@ import java.util.Optional;
 @Repository
 public interface AlarmIssuedRepository extends JpaRepository<AlarmIssued, Integer> {
 
-    @Query(value = "SELECT * FROM alarm_issued WHERE measurement_name = :measurementName", nativeQuery = true)
-    Optional<AlarmIssued> findByMeasurementName(@Param("measurementName") String measurementName);
+    @Query(value = "SELECT * FROM alarm_issued WHERE measurement_name = :measurementName AND time = :time", nativeQuery = true)
+    Optional<AlarmIssued> findByMeasurementName(@Param("measurementName") String measurementName,@Param("time") LocalDateTime time);
 
-    @Query(value = "SELECT * FROM alarm_issued ORDER BY time asc",nativeQuery = true)
+    @Query(value = "SELECT * FROM alarm_issued ORDER BY time",nativeQuery = true)
     List<AlarmIssued> findAllOrderByTime();
 
 
-    // lastSentIndex보다 큰 id를 가진 AlarmIssued 엔티티를 조회
-    @Query("SELECT a FROM AlarmIssued a WHERE a.id > :lastSentIndex ORDER BY a.time ASC")
-    List<AlarmIssued> findAlarmsAfter(@Param("lastSentIndex") int lastSentIndex);
+
 }
 
 
