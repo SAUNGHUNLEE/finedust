@@ -91,6 +91,7 @@ public class MainController {
 
 
     // 클라이언트에서 초기 데이터 요청을 처리하는 메소드
+    // 클 -> 서
     @MessageMapping("/loadInitialAlarms")
     public void loadInitialAlarms() {
         System.out.println("loadInitialAlars 통과");

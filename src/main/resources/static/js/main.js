@@ -81,7 +81,7 @@ function connect() {
             alarmMessages.forEach(alarmMessages => {
                 // 이미 화면에 표시된 알람이 아닐 경우에만 추가
                 if (!displayedAlarms.has(alarmMessages.id)) {
-                    displayAlarmMessage(alarmMessages.id, alarmMessages.measurementName, alarmMessages.message, alarmMessages.time);
+                    disPlayAlarmMessage(alarmMessages.id, alarmMessages.measurementName, alarmMessages.message, alarmMessages.time);
                     displayedAlarms.add(alarmMessages.id); // Set에 알람 ID 추가
                 }
             });
@@ -106,27 +106,42 @@ function disconnect() {
     }
 }
 
+let alarmArray = [];
 
-function displayAlarmMessage(id, measurementName, alarmMessage, time) {
+function disPlayAlarmMessage(id,measurementName,alarmMessage,time){
+
+    let newAlarm = {id,measurementName,alarmMessage,time};
+    alarmArray.push(newAlarm);
+    alarmArray.sort((a, b) => new Date(a.time) - new Date(b.time)); //time 순으로 정렬
+    updateAlarmMessage();
+}
+
+
+function updateAlarmMessage() {
+    let alarmList = document.getElementById('alarmNotifications');
+    alarmList.innerText = "";
     // 로컬 스토리지에서 삭제된 알람 목록
     let deletedAlarms = JSON.parse(localStorage.getItem("deletedAlarms")) || [];
 
-    // 현재 알람 ID가 삭제된 알람 목록에 없는 경우에만 알람을 화면에 추가
-    if (!deletedAlarms.includes(id)) {
-        let alarmList = document.getElementById('alarmNotifications');
-        let messageElement = document.createElement('div');
-        messageElement.classList.add('alarm-message');
-        messageElement.id = `alarm-${id}`;
-        messageElement.innerText = `경보 알람 메시지: ${measurementName}: ${alarmMessage} 시간은: ${time}`;
-        alarmList.appendChild(messageElement);
+    alarmArray.forEach(alarm => {
+        // 현재 알람 ID가 삭제된 알람 목록에 없는 경우에만 알람을 화면에 추가
+        if (!deletedAlarms.includes(alarm.id)) {
 
-        let deleteButton = document.createElement('button');
-        deleteButton.innerHTML = '삭제';
-        deleteButton.onclick = function () {
-            deleteAlarmView(id);
-        };
-        messageElement.appendChild(deleteButton);
-    }
+            let messageElement = document.createElement('div');
+            messageElement.classList.add('alarm-message');
+            messageElement.id = `alarm-${alarm.id}`;
+            messageElement.innerText = `경보 알람 메시지: ${alarm.measurementName}: ${alarm.alarmMessage} 시간은: ${alarm.time}`;
+            alarmList.appendChild(messageElement);
+
+            let deleteButton = document.createElement('button');
+            deleteButton.innerHTML = '삭제';
+            deleteButton.onclick = function () {
+                deleteAlarmView(id);
+            };
+            messageElement.appendChild(deleteButton);
+        }
+    })
+
 }
 
 
