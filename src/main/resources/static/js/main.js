@@ -1,7 +1,27 @@
+let startId = 11140;
+let endId = 11740;
+let i = null;
+
+for(i = startId; i <= endId; i++){
+    let currentId = 'LCD' + i;
+    let element = document.getElementById(currentId);
+    if(element){
+        element.addEventListener('click', function(event){
+            let districtName = event.target.textContent;
+            selectDateAndTime(event,districtName);
+        });
+    }
+
+}
+
+/*document.getElementById('LCD11740').addEventListener('click', function() {
+    var districtName = event.target.textContent;
+    selectDateAndTime(event,districtName);
+
+});*/
 
 function selectDateAndTime(event, districtName) {
     event.stopPropagation();
-
     var container = document.getElementById('datePicker');
     container.innerHTML = `
                 <h3>${districtName} - 날짜 및 시간 선택</h3>
