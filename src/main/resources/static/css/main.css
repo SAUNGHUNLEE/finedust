@@ -46,3 +46,14 @@ body, html {
 }
 
 
+.header {
+    background-color: #000;
+    color: white;
+    padding: 10px 15px;
+    text-align: right;
+}
+.header a {
+    color: white;
+    text-decoration: none;
+    padding-left: 15px;
+}

@@ -11,6 +11,9 @@
     <link rel="stylesheet" th:href="@{/css/svg.css}" />
 </head>
 <body>
+<header class="header">
+    <a href="#" th:href="@{/api/detail/get}">실시간 최신 미세먼지 정보</a> |
+</header>
 
 <svg style='background:#eaeaea;overflow:visible' width="800" height="656" viewbox="0 0 800 656" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -122,8 +125,14 @@
 <div id="alarmNotifications" style="display: none;">
 </div>
 
+<footer id="dustInfo">
+    <h3>미세먼지 정보</h3>
+    <div id="dustData">여기에 미세먼지 정보가 표시됩니다.</div>
+</footer>
+
 <!-- 날짜 및 시간 선택 폼을 표시할 div 요소 -->
 <div id="datePicker"></div>
 <script src="/js/main.js"></script>
+<script src="/js/OpenAPI.js"></script>
 </body>
 </html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <title>GET</title>
+</head>
+<body>
+<h2>공공데이터</h2>
+<select id="sidoName">
+    <option>전국</option>
+    <option>서울</option>
+    <option>부산</option>
+    <option>대구</option>
+    <option>인천</option>
+    <option>광주</option>
+    <option>대전</option>
+    <option>울산</option>
+    <option>경기</option>
+    <option>강원</option>
+    <option>충북</option>
+    <option>충남</option>
+    <option>전북</option>
+    <option>전남</option>
+    <option>경북</option>
+    <option>경남</option>
+    <option>제주</option>
+    <option>세종</option>
+</select>
+<input type="button" value="확인하기" onclick="doing()"> <!--클릭하면 doing메소드 실행-->
+<table id="resultTbl" border="1">
+    <thead>
+    <tr>
+        <th>지역</th>
+        <th>측정소</th>
+        <th>일시</th>
+        <th>통합대기환경수치</th>
+        <th>미세먼지농도</th>
+        <th>일산화탄소농도</th>
+        <th>이산화질소농도</th>
+        <th>아황산가스농도</th>
+        <th>오존가스농도</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+</body>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+    const resultTbl = document.getElementById("resultTbl");
+
+    function doing(){
+        $.ajax({
+            url:"get",
+            method:"POST",
+            data:{sidoName:$("#sidoName").val()},
+            success:function(data){
+                //console.log(data)
+                //응답되는 데이터는 JSON 형태인데
+                //{"response" : {"body" : {"items" : [결과 데이터들]} } }
+                const items = data.response.body.items;
+                let txt = "";
+                for(let item of items){
+                    txt+="<tr>";
+                    //지역
+                    txt+="<td>"+item.sidoName+"</td>"
+                    //측정소
+                    txt+="<td>"+item.stationName+"</td>"
+                    //일시
+                    txt+="<td>"+item.dataTime+"</td>"
+                    //통합대기환경수치
+                    txt+="<td>"+item.khaiValue;
+                    if(item.khaiGrade){
+                        txt +="("+item.khaiGrade+"등급)"
+                    }
+                    txt+="</td>"
+                    //미세먼지농도
+                    txt+="<td>"+(item.pm10Flag?item.pm10Flag:item.pm10Value)+"</td>"
+                    //일산화탄소농도
+                    txt+="<td>"+(item.coFlag?item.coFlag:item.coValue)+"</td>"
+                    //이산화질소농도
+                    txt+="<td>"+(item.no2Flag?item.no2Flag:item.no2Value)+"</td>"
+                    //아황산가스농도
+                    txt+="<td>"+(item.so2Flag?item.so2Flag:item.so2Value)+"</td>"
+                    //오존가스농도
+                    txt+="<td>"+(item.o3Flag?item.o3Flag:item.o3Value)+"</td>"
+                    txt+="</tr>";
+                }
+                $("#resultTbl tbody").html(txt);
+            }
+        })
+    }
+</script>
+
+</html>
