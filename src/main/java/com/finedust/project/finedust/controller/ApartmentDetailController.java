@@ -178,12 +178,13 @@ public class ApartmentDetailController {
     //일단 무시하고, 메인화면에 openapi에서 가져온 데이터 띄우는거 해보기
     //성공했고, 이제 openapi에서 db갱신되면 내 db에서도 갱신되게 스케줄러 사용해보기
     @PostMapping(value = "/getRegionData", produces = "application/json;charset=utf-8")
-    public Mono<ResponseDTO.AirQualityData> getRegionData(@RequestBody Map<String,Double> coords) {
+    public Mono<ResponseDTO.AirQualityData> getRegionData(@RequestBody Map<String,Double> coords) throws UnsupportedEncodingException {
         // 좌표 추출
         Double longitude = coords.get("longitude");
         Double latitude = coords.get("latitude");
         Map<String, String> addressDetails = apartmentDetailService.getAddressFromCoords(longitude, latitude);
         System.out.println(addressDetails + "위도 경도 = 시,구");
+
         String regionName = addressDetails.get("region");
 
         return Mono.justOrEmpty(airQualityRepository.findByRegionName(regionName))
@@ -197,7 +198,8 @@ public class ApartmentDetailController {
                         .pm25Value(aq.getPm25Value())
                         .pm25Grade(aq.getPm25Grade())
                         .build())
-                .doOnNext(aq -> System.out.println(aq + " 조회 완료"))
+                .doOnNext(aq -> System.out.println("시 이름 : " + aq.getSidoName() + "/" +  "구 이름 : " +  aq.getStationName() + "/" + "측정시간 : " + aq.getDataTime() + "/" + "수치 : " + aq.getPm10Value() +
+                        "/" + "미세먼지 등급 : " + "/" + aq.getPm10Grade() + " 상세 정보"))
                 .doOnError(error -> log.error("데이터 조회 에러: ", error));
     }
 
