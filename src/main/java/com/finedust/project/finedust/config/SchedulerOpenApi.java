@@ -53,13 +53,13 @@ public class SchedulerOpenApi {
                     .bodyToFlux(JsonNode.class)
                     .subscribeOn(Schedulers.boundedElastic()) // I/O 작업을 위한 스케줄러 설정
                     .flatMap(apartmentDetailService::saveOpenApiData)
-                    .subscribe(result -> System.out.println("Data updated for " + sidoName),
-                            error -> System.out.println("Error during data update: " + error.getMessage()));
+                    .subscribe(result -> System.out.println("Data 업데이트 " + sidoName),
+                            error -> System.out.println("Error 발생: " + error.getMessage()));
         }
     }
 
     
-/*    @Scheduled(fixedRate = 3600000)
+   @Scheduled(fixedRate = 3600000)
     public void updateOpenApiData() throws UnsupportedEncodingException {
         commonUpdateData();
     }
@@ -69,5 +69,5 @@ public class SchedulerOpenApi {
     @PostConstruct
     public void UpdateOpenApiData() throws UnsupportedEncodingException {
         commonUpdateData();
-    }*/
+    }
 }

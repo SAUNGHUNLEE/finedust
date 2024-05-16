@@ -35,107 +35,12 @@ public class ApartmentDetailController {
         this.apartmentDetailService = apartmentDetailService;
         this.airQualityRepository = airQualityRepository;
     }
-    @Value("${kakao.RESTAPI}")
-    private String APIKey;
-
-    //api/get.html 연결
-    @GetMapping("get")
-    public String replace() {
-
-        return "get";
-    }
-
- /*   @ResponseBody
-    @PostMapping(value = "get", produces = "application/json;charset=utf-8")
-    public Flux<String> getData(@RequestParam("sidoName") String sidoName) throws UnsupportedEncodingException {
-
-        String encodeServiceKey = URLEncoder.encode(serviceKey, "UTF-8");
 
 
-        return apartmentDetailService.webClient().get()
-                .uri(uriBuilder -> uriBuilder.path("/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty")
-                        .queryParam("serviceKey", encodeServiceKey)
-                        .queryParam("returnType", "json")
-                        .queryParam("sidoName", sidoName)
-                        .queryParam("numOfRows", 20)
-                        .build(true))
-                .retrieve()
-                .bodyToFlux(String.class)
-                .doOnNext(System.out::println);
-    }*/
 
-/*    @ResponseBody
-    @PostMapping(value = "get", produces = "application/json;charset=utf-8")
-    public Flux<String> getData(@RequestParam("sidoName") String sidoName) throws UnsupportedEncodingException {
-        String fullUri = apartmentDetailService.getBaseUrl() + "/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty";
-        String encodeServiceKey = URLEncoder.encode(serviceKey, "UTF-8");
-        String encodeSidoName = URLEncoder.encode(sidoName,"UTF-8");
-        URI uri = UriComponentsBuilder.fromUriString(fullUri)
-                .queryParam("serviceKey", encodeServiceKey)
-                .queryParam("returnType", "json")
-                .queryParam("sidoName", encodeSidoName)
-                .queryParam("numOfRows", 20)
-                .build(true)
-                .toUri();
-        log.info("컨트롤러 경로: {}", uri);  // 로그에 URI 출력
-
-        return apartmentDetailService.webClient().get()
-                .uri(uri)
-                .retrieve()
-                .bodyToFlux(String.class)
-                .doOnNext(System.out::println);
-    }*/
-/*
     @ResponseBody
-    @PostMapping(value = "get", produces = "application/json;charset=utf-8")
-    public Flux<String> getData(@RequestParam("sidoName") String sidoName) throws UnsupportedEncodingException {
-
-        String encodeSidoName = URLEncoder.encode(sidoName,"UTF-8");
-
-        Flux<String> responseFlux = apartmentDetailService.webClient().get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty")
-                        .queryParam("serviceKey", serviceKey) // 이미 인코딩된 serviceKey를 사용
-                        .queryParam("returnType", "json")
-                        .queryParam("sidoName", encodeSidoName) // sidoName은 여기서 인코딩해도 되고, 미리 인코딩해도 됨
-                        .queryParam("numOfRows", 50)
-                        .build())
-                .retrieve()
-                .bodyToFlux(String.class)
-                .doOnNext(System.out::println);
-
-        return responseFlux;
-    }*/
-
-
-
-    @PostMapping(value = "/getLocationInfo")
-    public Flux<String> getLocalInfo(@RequestParam("lon")Double lon , @RequestParam("lat") Double lat,HttpSession session){
-        Map<String,String> regionInfo = apartmentDetailService.getAddressFromCoords(lon,lat);
-        System.out.println(regionInfo + "시 + 구 정보");
-
-        String cityName = regionInfo.get("city");
-        String regionName = regionInfo.get("region");
-
-        List<JsonNode> allData = (List<JsonNode>) session.getAttribute("data");
-        if (allData == null) {
-            return Flux.error(new RuntimeException("세션에 데이터가 저장되지 않음"));
-        }
-        return Flux.fromIterable(allData)
-                .flatMap(item -> Flux.fromIterable(item.path("response").path("body").path("items")))
-                .filter(item -> {
-                    // 도시명과 구 이름이 모두 일치하는 데이터만 필터링
-                    String itemCityName = item.path("sidoName").asText().trim();
-                    String itemRegionName = item.path("stationName").asText().trim();
-                    return itemCityName.equalsIgnoreCase(cityName.trim()) && itemRegionName.equalsIgnoreCase(regionName.trim());
-                })
-                .map(this::dataResult);
-
-    }
-
-   @ResponseBody
     @PostMapping(value = "/get", produces = "application/json;charset=utf-8")
-    public Flux<ResponseDTO.AirQualityData> getRegionInfo(@RequestParam("sidoName") String sidoName, HttpSession httpSession) throws UnsupportedEncodingException {
+    public Flux<ResponseDTO.AirQualityData> getRegionInfo(@RequestParam("sidoName") String sidoName) throws UnsupportedEncodingException {
 
         String encodeSidoName = URLEncoder.encode(sidoName, "UTF-8");
 
@@ -156,23 +61,6 @@ public class ApartmentDetailController {
     }
 
 
-/*    @PostMapping(value = "/getRegion", produces = "application/json;charse t=utf-8")
-    @ResponseBody
-    public Mono<ResponseDTO.AirQualityData> getSpecificRegionData(@RequestParam("regionName") String regionName) {
-        return Mono.justOrEmpty(airQualityRepository.findByRegionName(regionName))
-                .subscribeOn(Schedulers.boundedElastic()) // 블로킹 I/O를 위한 별도의 스레드에서 실행(스레드분리)
-                .map(aq -> ResponseDTO.AirQualityData.builder()
-                        .sidoName(aq.getSidoName())
-                        .stationName(aq.getStationName())
-                        .dataTime(aq.getDataTime())
-                        .pm10Value(aq.getPm10Value())
-                        .pm10Grade(aq.getPm10Grade())
-                        .pm25Value(aq.getPm25Value())
-                        .pm25Grade(aq.getPm25Grade())
-                        .build())
-                .doOnNext(aq -> System.out.println(aq + " 조회 완료"))
-                .doOnError(error -> log.error("데이터 조회 에러: ", error));
-    }*/
 
     //pm25는 왜 안나오는지 모르겠음. 전제 openapi에서 긁어와도 안나옴.
     //일단 무시하고, 메인화면에 openapi에서 가져온 데이터 띄우는거 해보기
@@ -183,7 +71,7 @@ public class ApartmentDetailController {
         Double longitude = coords.get("longitude");
         Double latitude = coords.get("latitude");
         Map<String, String> addressDetails = apartmentDetailService.getAddressFromCoords(longitude, latitude);
-        System.out.println(addressDetails + "위도 경도 = 시,구");
+        System.out.println(addressDetails + "위도 경도를 이용한 위치 추출");
 
         String regionName = addressDetails.get("region");
 
@@ -198,8 +86,8 @@ public class ApartmentDetailController {
                         .pm25Value(aq.getPm25Value())
                         .pm25Grade(aq.getPm25Grade())
                         .build())
-                .doOnNext(aq -> System.out.println("시 이름 : " + aq.getSidoName() + "/" +  "구 이름 : " +  aq.getStationName() + "/" + "측정시간 : " + aq.getDataTime() + "/" + "수치 : " + aq.getPm10Value() +
-                        "/" + "미세먼지 등급 : " + "/" + aq.getPm10Grade() + " 상세 정보"))
+                .doOnNext(aq -> System.out.println("시 이름 : " + aq.getSidoName() + " " +  "구 이름 : " +  aq.getStationName() + " " + "측정시간 : " + aq.getDataTime() + " " + "미세먼지 수치 : " + aq.getPm10Value() +
+                        " "  + aq.getPm10Grade() + " 미세먼지 등급"))
                 .doOnError(error -> log.error("데이터 조회 에러: ", error));
     }
 

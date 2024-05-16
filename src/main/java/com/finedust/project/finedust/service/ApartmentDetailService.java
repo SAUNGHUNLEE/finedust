@@ -45,9 +45,7 @@ public class ApartmentDetailService {
     private String APIKey;*/
 
 
-    public String getBaseUrl() {
-        return BASE_URL;
-    }
+
     private static ExchangeFilterFunction logRequest() {
         return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
             log.info("Request Headers: {}", clientRequest.headers());
@@ -59,7 +57,7 @@ public class ApartmentDetailService {
 
     private static ExchangeFilterFunction logResponse() {
         return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
-            log.info("Response Status: {}", clientResponse.statusCode());
+            log.info("응답 코드: {}", clientResponse.statusCode());
             return Mono.just(clientResponse);
         });
     }
@@ -109,6 +107,13 @@ public class ApartmentDetailService {
 
                     // DB 조회
                     return Mono.justOrEmpty(airQualityRepository.findByStationNameAndSidoName(stationName, sidoName))
+                            .doOnSuccess(airQuality -> {
+                                if (airQuality == null) {
+                                    log.info("기존 레코드 없음. 새 AirQuality 객체 생성.");
+                                } else {
+                                    log.info("기존 AirQuality 레코드 발견. 레코드 업데이트.");
+                                }
+                            })
                             .defaultIfEmpty(new AirQuality()) // 데이터가 없으면 새 객체 생성
                             .map(airQuality -> {
                                 airQuality.setSidoName(sidoName);
@@ -118,7 +123,7 @@ public class ApartmentDetailService {
                                 airQuality.setPm10Grade(pm10Grade);
                                 airQuality.setPm25Value(pm25Value);
                                 airQuality.setPm25Grade(pm25Grade);
-                                return airQualityRepository.save(airQuality); // 저장 또는 업데이트
+                                return airQualityRepository.save(airQuality);
                             });
                 })
                 .subscribeOn(Schedulers.boundedElastic()) // 블로킹 I/O를 위한 별도의 스레드에서 실행
@@ -135,39 +140,7 @@ public class ApartmentDetailService {
     }
 
 
-
-   /* @Async
-    public CompletableFuture<ResponseDTO.AirQualityData> saveOpenApiData(AirQuality airQuality) {
-        Optional<AirQuality> existingData = airQualityRepository.findByStationNameAndSidoName(
-                airQuality.getStationName(), airQuality.getSidoName());
-
-        AirQuality updatedAirQuality = existingData.map(existing -> {
-            // Update existing data
-            existing.setDataTime(airQuality.getDataTime());
-            existing.setPm10Value(airQuality.getPm10Value());
-            existing.setPm10Grade(airQuality.getPm10Grade());
-            existing.setPm25Value(airQuality.getPm25Value());
-            existing.setPm25Grade(airQuality.getPm25Grade());
-            return existing;
-        }).orElse(airQuality);  // Or save new data
-
-        AirQuality saved = airQualityRepository.save(updatedAirQuality);
-        ResponseDTO.AirQualityData result = ResponseDTO.AirQualityData.builder()
-                .sidoName(saved.getSidoName())
-                .stationName(saved.getStationName())
-                .dataTime(saved.getDataTime())
-                .pm10Value(saved.getPm10Value())
-                .pm10Grade(saved.getPm10Grade())
-                .pm25Value(saved.getPm25Value())
-                .pm25Grade(saved.getPm25Grade())
-                .build();
-
-        return CompletableFuture.completedFuture(result);
-    }*/
-
-
-
-    // 위치 정보로부터 시와 구 정보 추출
+    // 위도+경도 로부터 시와 구 정보 추출
     public Map<String, String> getAddressFromCoords(Double lon, Double lat) {
         Mono<JsonNode> result = WebClient.builder().baseUrl("https://dapi.kakao.com")
                 .build().get()

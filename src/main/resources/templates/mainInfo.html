@@ -9,45 +9,38 @@
 <body>
 <div class="page-container">
     <h1>미세먼지 정보</h1>
-    <div th:if="${fineDustInfo}" class="info-container">
+    <div th:if="${fineDustDTO}" class="info-container">
         <div class="table-container">
             <table>
                 <tr>
                     <th>구</th>
-                    <td th:text="${fineDustInfo.measurementName}"></td>
+                    <td th:text="${fineDustDTO.measurementName}"></td>
                 </tr>
                 <tr>
                     <th>코드번호</th>
-                    <td th:text="${fineDustInfo.measurementCode}"></td>
+                    <td th:text="${fineDustDTO.measurementCode}"></td>
                 </tr>
                 <tr>
                     <th>날짜</th>
-                    <td th:text="${#temporals.format(fineDustInfo.date, 'yyyy-MM-dd HH')}"></td>
+                    <td th:text="${#temporals.format(fineDustDTO.date, 'yyyy-MM-dd HH')}"></td>
                 </tr>
                 <tr>
                     <th>미세먼지(PM10)</th>
-                    <td th:text="${fineDustInfo.pm10}"></td>
+                    <td th:text="${fineDustDTO.pm10}"></td>
                 </tr>
                 <tr>
                     <th>초미세먼지(PM2.5)</th>
-                    <td th:text="${fineDustInfo.pm2_5}"></td>
+                    <td th:text="${fineDustDTO.pm2_5}"></td>
                 </tr>
-                <tr th:if="${warningResponse}">
+                <tr th:if="${fineDustDTO}">
                     <th>경보</th>
-                    <td th:text="${warningResponse.message}"></td>
-                </tr>
-                <tr th:if="${checkResponse}">
-                    <th>점검정보</th>
-                    <td th:text="${checkResponse.message}"></td>
+                    <td th:text="${fineDustDTO.message}"></td>
                 </tr>
             </table>
-            <div th:if="${warningError}">
-                <p th:text="${warningError}" class="error-message"></p>
-            </div>
         </div>
     </div>
 </div>
-<div th:unless="${fineDustInfo}">
+<div th:unless="${fineDustDTO}">
     <p class="error-message">정보를 불러올 수 없습니다.</p>
 </div>
 

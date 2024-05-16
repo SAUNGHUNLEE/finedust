@@ -29,12 +29,12 @@ navigator.geolocation.getCurrentPosition(function (position) {
     }).then(data => {
         console.log('서버로부터 받은 데이터:', JSON.stringify(data, null, 2));
         const aq = data; // 미세먼지 데이터 객체
-        let displayText = `시 이름: ${aq.sidoName} / 구 이름: ${aq.stationName} / 측정시간: ${aq.dataTime} / PM10 수치: ${aq.pm10Value} / PM10 등급: ${aq.pm10Grade} / PM2.5 수치: ${aq.pm25Value} / PM2.5 등급: ${aq.pm25Grade}`;
+        let displayText = `시 이름: ${aq.sidoName} , 구 이름: ${aq.stationName} , 측정시간: ${aq.dataTime} , 미세먼지 수치: ${aq.pm10Value} , 미세먼지 등급: ${aq.pm10Grade} , 초미세먼지 수치: ${aq.pm25Value} , 초미세먼지 등급: ${aq.pm25Grade}`;
         document.getElementById('dustData').innerHTML = displayText;
-        alert('위치 정보가 성공적으로 서버에 전송되었습니다.');
+        alert('위치 정보가 성공적으로 서버에 전송되었습니다.'); 
     })
         .catch(error => {
-            console.error('Failed to fetch:', error);
+            console.error('실패:', error);
             alert('위치 정보를 불러오는 데 실패하였습니다.');
         });
 }, error, options);

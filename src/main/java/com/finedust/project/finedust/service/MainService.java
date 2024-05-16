@@ -17,6 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -28,43 +29,21 @@ public class MainService {
     private final FineDustRepository fineDustRepository;
     private final AlarmIssuedRepository alarmIssuedRepository;
     private final CheckDayRepository checkDayRepository;
-    private final SimpMessagingTemplate messagingTemplate;
-    private static final Logger logger = LoggerFactory.getLogger(MainService.class);
 
-    private int currentIndex = 0;
-    private boolean allAlarmsSent = false;
-
-    public MainService(FineDustRepository fineDustRepository, AlarmIssuedRepository alarmIssuedRepository, CheckDayRepository checkDayRepository, SimpMessagingTemplate messagingTemplate) {
+    public MainService(FineDustRepository fineDustRepository, AlarmIssuedRepository alarmIssuedRepository, CheckDayRepository checkDayRepository) {
         this.fineDustRepository = fineDustRepository;
         this.alarmIssuedRepository = alarmIssuedRepository;
         this.checkDayRepository = checkDayRepository;
-        this.messagingTemplate = messagingTemplate;
     }
 
-    // 구 + 날짜 선택 시 상세정보
-    public FineDustDTO getFineDust(FineDustDTO fineDustDTO) {
-        try {
-            FineDust fineDust = fineDustRepository.findFineDust(fineDustDTO.getMeasurementName(), fineDustDTO.getDate())
-                    .orElseThrow(() -> new IllegalArgumentException("조건에 맞는 정보가 없습니다."));
-
-            FineDustDTO fineDustDTOInfo = FineDustDTO.builder()
-                    .id(fineDust.getId())
-                    .date(fineDust.getDate())
-                    .measurementName(fineDust.getMeasurementName())
-                    .measurementCode(fineDust.getMeasurementCode())
-                    .pm10(fineDust.getPm10())
-                    .pm2_5(fineDust.getPm2_5())
-                    .build();
-
-            return fineDustDTOInfo;
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("FineDustService.getFineDust() : 에러 발생.");
-        }
+    private AlarmIssuedDTO convertToDTO(AlarmIssued alarmIssued) {
+        return AlarmIssuedDTO.builder()
+                .measurementName(alarmIssued.getMeasurementName())
+                .warningLevel(alarmIssued.getWarningLevel())
+                .time(alarmIssued.getTime())
+                .message(alarmIssued.getMessage() + "단계 경보 발령")
+                .build();
     }
-
     /***
      pm10 150이상 이며 2시간 이상 지속시 주의보 발령 , 300이상 경보
      pm2.5 75이상 이며 2시간 이상 지속시 주의보 발령 , 150이상 경보
@@ -73,191 +52,150 @@ public class MainService {
 
      미세먼지(pm10) 2,4 , 초미세먼지(pm2.5) 1,3  조건 두개 다 충족되면 1에 가까운 숫자 선택(심각도)
      ***/
-    public AlarmIssuedDTO getPmWarning(FineDustDTO fineDustDTO) {
-        System.out.println(fineDustDTO + "fineDustDTO");
-        LocalDateTime currentDateTime = fineDustDTO.getDate();//선택한시간
-        LocalDateTime beforeDateTime = currentDateTime.minusHours(2);
-        System.out.println(currentDateTime + "선택한시간");
-        System.out.println(beforeDateTime + "  :2시간 전인 시간");
-        List<FineDust> fineDustList = fineDustRepository.findFineDustByPmChoice(fineDustDTO.getMeasurementName(), beforeDateTime, currentDateTime);
-        System.out.println(fineDustList + "내가 선택한 정보");
-        fineDustList.sort(Comparator.comparing(FineDust::getDate));
+    public List<AlarmIssuedDTO> getPmWarning() {
+
+        List<FineDust> fineDustInfo = fineDustRepository.findAllDust();
+        List<AlarmIssuedDTO> alarmIssueds = new ArrayList<>();
 
         boolean isContinuous = false;
         int continuousCount = 0;
         LocalDateTime lastDateTime = null;
+        LocalDateTime fineDustDTODateInfo;
 
+        for (int i = 0; i < fineDustInfo.size(); i++) {
+            fineDustDTODateInfo = fineDustInfo.get(i).getDate();
 
-        for (int i = 0; i < fineDustList.size(); i++) {
-            FineDust fineDust = fineDustList.get(i);
             // 연속된 시간 체크 로직
-            if (lastDateTime == null || (fineDust.getDate().minusHours(1).equals(lastDateTime)))
-            {
+            if (lastDateTime == null || (fineDustDTODateInfo.minusHours(1).equals(lastDateTime))) {
                 continuousCount++;
-                System.out.println(continuousCount + "연속된 시간 및 pm조건충족");
+                System.out.println(continuousCount + "연속된 시간");
                 if (continuousCount >= 3) {
                     isContinuous = true;
+                    System.out.println(isContinuous + "갯수");
                     break;
                 }
             } else {
                 continuousCount = 1; // 연속이 끊기거면 리셋
             }
-            lastDateTime = fineDust.getDate();
-            System.out.println(lastDateTime + "시작한 날짜");
+            lastDateTime = fineDustDTODateInfo;
         }
 
-        int pm10Level = 0;
-        int pm2_5Level = 0;
+        int finalWarningLevel = Integer.MAX_VALUE;
 
         if (isContinuous) {
-            System.out.println(isContinuous + "참 혹은 거짓");
-            for (FineDust fineDust : fineDustList) {
-                if (fineDust.getPm10() >= 300) {
-                    System.out.println(fineDust + "300 넘는 정보");
-                    pm10Level = Math.max(pm10Level, 2); // 경보
-                    System.out.println(pm10Level + "경보 2");
-                } else if (fineDust.getPm10() >= 150) {
-                    System.out.println(fineDust + "150 넘는 정보");
-                    pm10Level = Math.max(pm10Level, 4); // 주의보
-                    System.out.println(pm10Level + "경보 4");
+            System.out.println(isContinuous + "연속된 시간");
+            for (FineDust fineDusts : fineDustInfo) {
+                int pm10Level = Integer.MAX_VALUE;
+                int pm2_5Level = Integer.MAX_VALUE;
+
+                // PM10 조건에 따른 레벨 결정
+                if (fineDusts.getPm10() >= 300) {
+                    pm10Level = 2; // 미세먼지 경보
+                } else if (fineDusts.getPm10() >= 150) {
+                    pm10Level = 4; // 미세먼지 주의보
                 }
 
-                if (fineDust.getPm2_5() >= 150) {
-                    System.out.println(fineDust + "2.5 가 150 넘는 정보");
-                    pm2_5Level = Math.max(pm2_5Level, 1); // 경보
-                    System.out.println(pm2_5Level + "경보 1");
-                } else if (fineDust.getPm2_5() >= 75) {
-                    System.out.println(fineDust + "2.5 가 75 넘는 정보");
-                    pm2_5Level = Math.max(pm2_5Level, 3); // 주의보
-                    System.out.println(pm2_5Level + "경보 3");
+                // PM2.5 조건에 따른 레벨 결정
+                if (fineDusts.getPm2_5() >= 150) {
+                    pm2_5Level = 1; // 초미세먼지 경보
+                } else if (fineDusts.getPm2_5() >= 75) {
+                    pm2_5Level = 3; // 초미세먼지 주의보
+                }
+
+                finalWarningLevel = Math.min(pm10Level, pm2_5Level);
+                if (finalWarningLevel != Integer.MAX_VALUE) {
+                    Optional<AlarmIssued> existingAlarmIssued = alarmIssuedRepository.findByMeasurementName(fineDusts.getMeasurementName(), fineDusts.getDate());
+                    if (!existingAlarmIssued.isPresent()) {
+                        AlarmIssued alarmIssued = AlarmIssued.builder()
+                                .measurementName(fineDusts.getMeasurementName())
+                                .warningLevel(finalWarningLevel)
+                                .time(fineDusts.getDate())
+                                .message(finalWarningLevel + "단계 경보발령")
+                                .build();
+                        alarmIssuedRepository.save(alarmIssued);
+                        convertToDTO(alarmIssued);
+
+                        alarmIssueds.add(convertToDTO(alarmIssued));
+
+
+                    } else {
+                        // 기존 경보 정보를 클라이언트에 전송
+                        alarmIssueds.add(convertToDTO(existingAlarmIssued.get()));
+                        System.out.println("동일한 경보 정보가 이미 존재하여 저장하지 않습니다.");
+                    }
+
+                } else {
+                    System.out.println("경보발령 기준에 충족하지 않는 데이터입니다.");
                 }
             }
         }
+        return alarmIssueds; // 모든 데이터 처리 후 반환
 
-
-        // 둘다 조건 충족 시 level 1에 가까우면 채택
-        int finalWarningLevel = 0;
-        if(pm10Level != 0 && pm2_5Level !=0){
-            finalWarningLevel = Math.min(pm10Level, pm2_5Level);
-        }else if(pm10Level == 0 && pm2_5Level != 0){
-            finalWarningLevel = pm2_5Level;
-        }else if(pm10Level !=0 && pm2_5Level == 0){
-            finalWarningLevel = pm10Level;
-        }
-
-
-        System.out.println(finalWarningLevel + "경고 레벨 선택");
-
-
-        if (finalWarningLevel > 0) {
-            Optional<AlarmIssued> existingAlarm = alarmIssuedRepository.findByMeasurementName(fineDustDTO.getMeasurementName(),fineDustDTO.getDate());
-            System.out.println(existingAlarm + "경보 울리는 날짜 정보");
-            if (!existingAlarm.isPresent()) {
-                AlarmIssued alarmIssued = AlarmIssued.builder()
-                        .measurementName(fineDustDTO.getMeasurementName())
-                        .warningLevel(finalWarningLevel)
-                        .time(currentDateTime)
-                        .message(finalWarningLevel + "단계 경보발령")
-                        .build();
-                AlarmIssued savedAlarm = alarmIssuedRepository.save(alarmIssued);
-
-                AlarmIssuedDTO alarmIssuedDTO = AlarmIssuedDTO.builder()
-                        .measurementName(alarmIssued.getMeasurementName())
-                        .warningLevel(alarmIssued.getWarningLevel())
-                        .time(alarmIssued.getTime())
-                        .message(finalWarningLevel + "단계 경보발령")
-                        .build();
-
-
-                // 클라이언트에게 실시간으로 알람 전송
-                addAlarm(savedAlarm);
-
-                return alarmIssuedDTO;
-
-            } else {
-                return AlarmIssuedDTO.builder()
-                        .measurementName(fineDustDTO.getMeasurementName())
-                        .warningLevel(0)
-                        .time(currentDateTime)
-                        .message(finalWarningLevel + "단계 경보발령")
-                        .build();
-            }
-        } else {
-            System.out.println("경보 울리지않는 날짜 위치");
-            return AlarmIssuedDTO.builder()
-                    .measurementName(fineDustDTO.getMeasurementName())
-                    .warningLevel(0)
-                    .time(currentDateTime)
-                    .message("경보발령 기준에 충족하지 않는 날입니다. pm10이 150이상 혹은 300이상, pm2.5이 75이상 혹은 150이상이 2시간 이상 지속되어야합니다.")
-                    .build();
-
-
-        }
     }
 
     /***
      * FindDust테이블에서 pm10,pm2.5가 0인 결과를 repository에서 다가져온다
      * 경보발령 메서드처럼, 상세정보 페이지에 들어갈때, 조건에 해당하면 checkDay테이블에 값 저장
      */
-    public CheckDayDTO getCheckDay(FineDustDTO fineDustDTO) {
-        Optional<FineDust> fineDust = fineDustRepository.findCheckDay(fineDustDTO.getMeasurementName(), fineDustDTO.getDate());
+    public List<CheckDayDTO> getCheckDay( ) {
+        List<FineDust> fineDustInfo = fineDustRepository.findCheckDust();
+        List<CheckDayDTO> checkDayDTOS = new ArrayList<>();
 
-        if (fineDust.isPresent()) {
-            Optional<CheckDay> checkDay = checkDayRepository.findByMeasurementNameAndCheckTime(fineDust.get().getMeasurementName(), fineDust.get().getDate());
+        for(FineDust fineDusts : fineDustInfo){
+            Optional<CheckDay> checkDayInfo = checkDayRepository.findByMeasurementNameAndCheckTime(fineDusts.getMeasurementName(),fineDusts.getDate());
+            if(fineDusts.getPm2_5() == 0 && fineDusts.getPm10() == 0){
+                if(!checkDayInfo.isPresent()){
+                    CheckDay checkDay = CheckDay.builder()
+                            .measurementName(fineDusts.getMeasurementName())
+                            .measurementCode(fineDusts.getMeasurementCode())
+                            .checkTime(fineDusts.getDate())
+                            .message("정기점검 있는 날입니다.")
+                            .build();
 
-            if (!checkDay.isPresent()) {
-                CheckDay checkDays = CheckDay.builder()
-                        .measurementName(fineDust.get().getMeasurementName())
-                        .measurementCode(fineDust.get().getMeasurementCode())
-                        .checkTime(fineDust.get().getDate())
-                        .message("정기 점검이 있던 날입니다.")
-                        .build();
+                    checkDayRepository.save(checkDay);
 
-                checkDayRepository.save(checkDays);
+                    CheckDayDTO checkDayDTO = CheckDayDTO.builder()
+                            .measurementName(checkDay.getMeasurementName())
+                            .measurementCode(checkDay.getMeasurementCode())
+                            .checkTime(checkDay.getCheckTime())
+                            .message("정기점검 있는 날입니다.")
+                            .build();
 
-                CheckDayDTO checkDayDTO = CheckDayDTO.builder()
-                        .measurementName(checkDays.getMeasurementName())
-                        .measurementCode(checkDays.getMeasurementCode())
-                        .checkTime(checkDays.getCheckTime())
-                        .message(checkDays.getMessage())
-                        .build();
-
-                return checkDayDTO;
-            } else {
-                return CheckDayDTO.builder()
-                        .measurementName(checkDay.get().getMeasurementName())
-                        .measurementCode(checkDay.get().getMeasurementCode())
-                        .checkTime(checkDay.get().getCheckTime())
-                        .message(checkDay.get().getMessage())
-                        .build();
+                    checkDayDTOS.add(checkDayDTO);
+                }else{
+                    System.out.println("checkDay테이블에 해당 정보가 저장되어있습니다.");
+                }
             }
-        } else {
-            return CheckDayDTO.builder()
-                    .measurementName(fineDustDTO.getMeasurementName())
-                    .measurementCode(fineDustDTO.getMeasurementCode())
-                    .checkTime(fineDustDTO.getDate())
-                    .message("정기점검 날이 아닙니다.")
-                    .build();
         }
+        return checkDayDTOS;
     }
 
+    public FineDustDTO getFineDustInfo(FineDustDTO.SearchDTO searchDTO){
+        // DTO에서 필요한 값 추출
+        String measurementName = searchDTO.getMeasurementName();
+        LocalDateTime date = searchDTO.getDate();
 
-    //서버->클라이언트
-    public void addAlarm(AlarmIssued newAlarm) {
-        System.out.println("addAlarm메서드 시작");
+        FineDust fineDust = fineDustRepository.findFineDust(measurementName,date)
+                .orElseThrow(() -> new IllegalArgumentException("해당 미세먼지 정보가 없습니다."));
+        Optional<AlarmIssued> alarmIssued = alarmIssuedRepository.findByMeasurementName(measurementName,date);
+        String message = "";
 
-        // 신규 알람을 클라이언트에게 전송
-        AlarmIssuedDTO alarmDTO = AlarmIssuedDTO.builder()
-                .id(newAlarm.getId())
-                .measurementName(newAlarm.getMeasurementName())
-                .message(newAlarm.getMessage())
-                .time(newAlarm.getTime())
+        if (alarmIssued.isPresent()) {
+            AlarmIssued alarmIssuedInfo = alarmIssued.get();
+            message = "경보 레벨 " + alarmIssuedInfo.getWarningLevel() + " 입니다";
+        } else if (fineDust.getPm2_5() == 0 && fineDust.getPm10() == 0) {
+            message = "정기 점검 날입니다.";
+        }
+        FineDustDTO fineDustDTO = FineDustDTO.builder()
+                .measurementName(fineDust.getMeasurementName())
+                .measurementCode(fineDust.getMeasurementCode())
+                .pm10(fineDust.getPm10())
+                .pm2_5(fineDust.getPm2_5())
+                .date(fineDust.getDate())
+                .message(message)
                 .build();
 
-        // 전체 클라이언트에게 새로운 알람 데이터를 전송
-        messagingTemplate.convertAndSend("/topic/alarm", alarmDTO);
-        System.out.println(messagingTemplate + "service에 잘 작동중?");
-
+        return fineDustDTO;
     }
 
 

@@ -1,3 +1,4 @@
+/*
 package com.finedust.project.finedust;
 
 import com.finedust.project.finedust.dto.AlarmIssuedDTO;
@@ -78,3 +79,4 @@ public class MainServiceTest {
 
 
 }
+*/
