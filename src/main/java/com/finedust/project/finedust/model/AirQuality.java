@@ -3,6 +3,7 @@ package com.finedust.project.finedust.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
+import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,7 +13,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "airquality")
+@Table(name = "air_quality", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"sido_name", "station_name", "date_time"})
+})
 public class AirQuality {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,5 +42,6 @@ public class AirQuality {
 
     @Column(name = "pm10_grade")
     private String pm10Grade;
+
 
 }

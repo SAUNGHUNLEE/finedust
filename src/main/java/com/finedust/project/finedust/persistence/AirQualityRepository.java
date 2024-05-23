@@ -18,11 +18,14 @@ import java.util.Optional;
 public interface AirQualityRepository extends JpaRepository<AirQuality, Integer> {
 
 
-   @Query(value = "SELECT * FROM airquality WHERE station_name =:stationName AND sido_name =:sidoName",nativeQuery = true)
+   @Query(value = "SELECT * FROM air_quality WHERE station_name =:stationName AND sido_name =:sidoName ",nativeQuery = true)
    Optional<AirQuality> findByStationNameAndSidoName(@Param("stationName") String stationName,@Param("sidoName") String sidoName);
 
-   @Query(value = "SELECT * FROM airquality WHERE station_name =:stationName",nativeQuery = true)
+
+   @Query(value = "SELECT * FROM air_quality WHERE station_name =:stationName",nativeQuery = true)
    Optional<AirQuality> findByRegionName(@Param("stationName") String stationName);
+
+
 }
 
 

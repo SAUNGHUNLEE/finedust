@@ -1,24 +1,22 @@
 package com.finedust.project.finedust.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.finedust.project.finedust.config.SchedulerOpenApi;
 import com.finedust.project.finedust.dto.ResponseDTO;
 import com.finedust.project.finedust.persistence.AirQualityRepository;
 import com.finedust.project.finedust.service.ApartmentDetailService;
-import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLEncoder;
-import java.util.List;
 import java.util.Map;
 
 
@@ -26,83 +24,42 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/detail")
 public class ApartmentDetailController {
-    @Value("${openApi.decodeServiceKey}")
-    private String serviceKey;
     private final ApartmentDetailService apartmentDetailService;
     private final AirQualityRepository airQualityRepository;
 
-    public ApartmentDetailController(ApartmentDetailService apartmentDetailService, AirQualityRepository airQualityRepository) {
+    private final SchedulerOpenApi schedulerOpenApi;
+
+    @Autowired
+    public ApartmentDetailController(ApartmentDetailService apartmentDetailService, AirQualityRepository airQualityRepository, SchedulerOpenApi schedulerOpenApi) {
         this.apartmentDetailService = apartmentDetailService;
         this.airQualityRepository = airQualityRepository;
+        this.schedulerOpenApi = schedulerOpenApi;
     }
 
 
 
     @ResponseBody
-    @PostMapping(value = "/get", produces = "application/json;charset=utf-8")
-    public Flux<ResponseDTO.AirQualityData> getRegionInfo(@RequestParam("sidoName") String sidoName) throws UnsupportedEncodingException {
-
-        String encodeSidoName = URLEncoder.encode(sidoName, "UTF-8");
-
-        return apartmentDetailService.webClient().get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty")
-                        .queryParam("serviceKey", serviceKey)
-                        .queryParam("returnType", "json")
-                        .queryParam("sidoName", encodeSidoName)
-                        .queryParam("numOfRows", 100)
-                        .build())
-                .retrieve()
-                .bodyToFlux(JsonNode.class)
-                .subscribeOn(Schedulers.boundedElastic()) // I/O 작업을 위한 스케줄러 설정
-                .flatMap(apartmentDetailService::saveOpenApiData)
-                .doOnNext(aq -> System.out.println(aq + " DB에 저장 완료"))
-                .doOnError(error -> log.error("데이터 저장 에러: ", error));
+    @GetMapping(value = "/getAll", produces = "application/json;charset=utf-8")
+    public ResponseEntity<String> getRegionInfo() throws UnsupportedEncodingException {
+        schedulerOpenApi.commonUpdateData();
+        return ResponseEntity.ok("데이터 요청 및 저장이 완료되었습니다.");
     }
 
 
 
-    //pm25는 왜 안나오는지 모르겠음. 전제 openapi에서 긁어와도 안나옴.
-    //일단 무시하고, 메인화면에 openapi에서 가져온 데이터 띄우는거 해보기
-    //성공했고, 이제 openapi에서 db갱신되면 내 db에서도 갱신되게 스케줄러 사용해보기
     @PostMapping(value = "/getRegionData", produces = "application/json;charset=utf-8")
     public Mono<ResponseDTO.AirQualityData> getRegionData(@RequestBody Map<String,Double> coords) throws UnsupportedEncodingException {
         // 좌표 추출
         Double longitude = coords.get("longitude");
         Double latitude = coords.get("latitude");
-        Map<String, String> addressDetails = apartmentDetailService.getAddressFromCoords(longitude, latitude);
-        System.out.println(addressDetails + "위도 경도를 이용한 위치 추출");
 
-        String regionName = addressDetails.get("region");
 
-        return Mono.justOrEmpty(airQualityRepository.findByRegionName(regionName))
-                .subscribeOn(Schedulers.boundedElastic()) // 블로킹 I/O를 위한 별도의 스레드에서 실행(스레드분리)
-                .map(aq -> ResponseDTO.AirQualityData.builder()
-                        .sidoName(aq.getSidoName())
-                        .stationName(aq.getStationName())
-                        .dataTime(aq.getDataTime())
-                        .pm10Value(aq.getPm10Value())
-                        .pm10Grade(aq.getPm10Grade())
-                        .pm25Value(aq.getPm25Value())
-                        .pm25Grade(aq.getPm25Grade())
-                        .build())
-                .doOnNext(aq -> System.out.println("시 이름 : " + aq.getSidoName() + " " +  "구 이름 : " +  aq.getStationName() + " " + "측정시간 : " + aq.getDataTime() + " " + "미세먼지 수치 : " + aq.getPm10Value() +
-                        " "  + aq.getPm10Grade() + " 미세먼지 등급"))
-                .doOnError(error -> log.error("데이터 조회 에러: ", error));
-    }
+        return apartmentDetailService.getAddressFromCoords(longitude, latitude)
+                .flatMap(addressDetails ->{
+                    String regionName = addressDetails.get("region");
+                    return apartmentDetailService.getAirQualityData(regionName);
+                });
 
-    //구 이름이 필터링이 완료되면, 해당 구에 속한 상세 정보들
-    private String dataResult(JsonNode item){
-        ObjectNode result = JsonNodeFactory.instance.objectNode();
-        result.put("지역", item.path("sidoName").asText());
-        result.put("측정소", item.path("stationName").asText());
-        result.put("일시", item.path("dataTime").asText());
-        result.put("미세먼지농도", item.path("pm10Value").asText().isEmpty() ? "데이터 없음" : item.path("pm10Value").asText());
-        result.put("미세먼지 등급", item.path("pm10Grade").asText().isEmpty() ? "데이터 없음" : item.path("pm10Grade").asText());
-        result.put("초미세먼지농도", item.path("pm25Value").asText().isEmpty() ? "데이터 없음" : item.path("pm25Value").asText());
-        result.put("초미세먼지 등급", item.path("pm25Grade").asText().isEmpty() ? "데이터 없음" : item.path("pm25Grade").asText());
-
-        return result.toString();
     }
 
 
@@ -151,8 +108,10 @@ public class ApartmentDetailController {
         conn.disconnect();
         return result; //String으로 했기 때문에 리턴 null 달아줌
     }
-
 */
+
+
+
 
 
 }
