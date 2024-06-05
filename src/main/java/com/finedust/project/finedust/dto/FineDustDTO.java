@@ -29,5 +29,21 @@ public class FineDustDTO {
     private String measurementCode;
     private int pm10;
     private int pm2_5;
+    private String message;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SearchDTO {
+        private String measurementName;
+        @JsonFormat(pattern = "yyyy-MM-dd HH")
+        private LocalDateTime date;
+
+
+
+    }
+
+
 
 }

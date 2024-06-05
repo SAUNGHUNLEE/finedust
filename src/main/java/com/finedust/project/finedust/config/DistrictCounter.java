@@ -1,3 +1,4 @@
+/*
 package com.finedust.project.finedust.config;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -14,7 +15,7 @@ import java.util.Map;
 public class DistrictCounter {
     
     //dataLoader에서 받아서 db저장
- /*  public List<FineDust> parseJsonFile(String filePath){
+ public List<FineDust> parseJsonFile(String filePath){
         ObjectMapper objectMapper = new ObjectMapper();
         List<FineDust> fineDustList = null;
         try{
@@ -23,6 +24,6 @@ public class DistrictCounter {
             e.printStackTrace();;
         }
         return fineDustList;
-    }*/
+    }
 
-}
+}*/
