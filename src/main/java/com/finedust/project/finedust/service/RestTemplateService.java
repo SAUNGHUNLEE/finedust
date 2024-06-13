@@ -1,4 +1,3 @@
-/*
 package com.finedust.project.finedust.service;
 
 
@@ -11,6 +10,7 @@ import com.finedust.project.finedust.persistence.AirQualityRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +22,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,7 +32,7 @@ import java.util.Optional;
 @Service
 public class RestTemplateService implements WebMvcConfigurer {
 
-    private RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final AirQualityRepository airQualityRepository;
 
     @Autowired
@@ -41,9 +42,12 @@ public class RestTemplateService implements WebMvcConfigurer {
     @Value("${openApi.decodeServiceKey}")
     private String serviceKey;
 
-    public RestTemplateService(AirQualityRepository airQualityRepository) {
+    public RestTemplateService(AirQualityRepository airQualityRepository,RestTemplate restTemplate) {
         this.airQualityRepository = airQualityRepository;
+        this.restTemplate = restTemplate;
+
     }
+
 
 
     public List<ResponseDTO.AirQualityData> fetchData() throws UnsupportedEncodingException, JsonProcessingException {
@@ -53,11 +57,15 @@ public class RestTemplateService implements WebMvcConfigurer {
 
         for(String sido : sidoNames){
             long startTime = System.currentTimeMillis();
+
             String json = OpenAPiData(sido);
+
             JsonNode jsonNode = objectMapper.readTree(json); //json -> jsonNode
+
             List<ResponseDTO.AirQualityData> dataForsido = getOpenApi(jsonNode);
             log.info(dataForsido + "모든 시도 데이터들 모음");
             allData.addAll(dataForsido);
+
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
             log.info("각 도시 {}, DB에 저장까지 걸린 시간 {} ms", sido,duration);
@@ -65,6 +73,30 @@ public class RestTemplateService implements WebMvcConfigurer {
 
         return allData;
     }
+
+ /*   public List<XMLResponseDTO.AirQualityData> fetchDataXML() throws UnsupportedEncodingException, JsonProcessingException {
+
+        String[] sidoNames = {"서울", "부산", "대구", "인천", "광주", "대전", "울산", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주", "세종"};
+        List<XMLResponseDTO.AirQualityData> allData = new ArrayList<>();
+
+        for(String sido : sidoNames){
+            long startTime = System.currentTimeMillis();
+
+            String xml = OpenAPiData(sido);
+
+            List<XMLResponseDTO.AirQualityData> dataForsido = getOpenApiXML(xml);
+            log.info(dataForsido + "모든 시도 데이터들 모음");
+            allData.addAll(dataForsido);
+
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+            log.info("각 도시 {}, DB에 저장까지 걸린 시간 {} ms", sido,duration);
+        }
+
+        return allData;
+    }*/
+
+
 
 
     public String OpenAPiData(String sidoName) {
@@ -97,6 +129,21 @@ public class RestTemplateService implements WebMvcConfigurer {
     }
 
 
+    /*public List<XMLResponseDTO.AirQualityData> getOpenApiXML(String xml) throws JsonProcessingException {
+        XmlMapper xmlMapper1 = new XmlMapper();
+        XMLResponseDTO xmlResponseDTO = xmlMapper1.readValue(xml, XMLResponseDTO.class);
+        // DTO 객체에서 AirQualityData 리스트 추출
+        List<XMLResponseDTO.AirQualityData> airQualityDataList = xmlResponseDTO.getBody().getItems();
+
+
+        if (airQualityDataList != null) {
+            saveOpenApiDataXML(airQualityDataList);
+            return airQualityDataList;
+        } else {
+            return new ArrayList<>();
+        }
+    }*/
+
     public List<ResponseDTO.AirQualityData> getOpenApi(JsonNode root) {
         if (root == null || !root.has("response")) {
             throw new IllegalArgumentException("json데이터 없음");
@@ -119,16 +166,13 @@ public class RestTemplateService implements WebMvcConfigurer {
             ResponseDTO.AirQualityData airQualityData = new ResponseDTO.AirQualityData(pm10Value, pm25Value, dataTime, stationName, sidoName, pm25Grade, pm10Grade);
             dataList.add(airQualityData);
 
-
         }
         saveOpenApiData(dataList);
         return dataList;
-
-
     }
 
     @Transactional
-    public void saveOpenApiData(List<ResponseDTO.AirQualityData> dataList) {
+    public synchronized void saveOpenApiData(List<? extends ResponseDTO.AirQualityData> dataList) {
         for(ResponseDTO.AirQualityData dataLists : dataList){
             Optional<AirQuality> existingData = airQualityRepository.findByStationNameAndSidoName(
                     dataLists.getStationName(), dataLists.getSidoName());
@@ -160,5 +204,37 @@ public class RestTemplateService implements WebMvcConfigurer {
         }
     }
 
+/*    @Transactional
+    public synchronized void saveOpenApiDataXML(List<XMLResponseDTO.AirQualityData> dataList) {
+        for(XMLResponseDTO.AirQualityData dataLists : dataList){
+            Optional<AirQuality> existingData = airQualityRepository.findByStationNameAndSidoName(
+                    dataLists.getStationName(), dataLists.getSidoName());
+            if(!existingData.isPresent()){
+                AirQuality newRecord = new AirQuality();
+                // 데이터 세팅
+                newRecord.setDataTime(dataLists.getDataTime());
+                newRecord.setPm10Value(dataLists.getPm10Value());
+                newRecord.setPm10Grade(dataLists.getPm10Grade());
+                newRecord.setPm25Value(dataLists.getPm25Value());
+                newRecord.setPm25Grade(dataLists.getPm25Grade());
+                newRecord.setSidoName(dataLists.getSidoName());
+                newRecord.setStationName(dataLists.getStationName());
+
+                log.info(newRecord + "새로 저장된 데이터");
+                // 데이터베이스에 저장
+                airQualityRepository.save(newRecord);
+            }else{
+                AirQuality existData = existingData.get();
+                existData.setDataTime(dataLists.getDataTime());
+                existData.setPm10Value(dataLists.getPm10Value());
+                existData.setPm10Grade(dataLists.getPm10Grade());
+                existData.setPm25Value(dataLists.getPm25Value());
+                existData.setPm25Grade(dataLists.getPm25Grade());
+                log.info("중복 데이터 발견" + existingData.get());
+                airQualityRepository.save(existData);
+
+            }
+        }
+    }*/
+
 }
-*/

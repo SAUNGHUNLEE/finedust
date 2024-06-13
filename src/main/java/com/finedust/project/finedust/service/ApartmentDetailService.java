@@ -124,7 +124,6 @@ public class ApartmentDetailService {
                 .uri(uriBuilder -> uriBuilder
                         .path("/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty")
                         .queryParam("serviceKey", serviceKey)
-                        //.queryParam("returnType", "json")
                         .queryParam("returnType", "json")
                         .queryParam("sidoName", encodeSidoName)
                         .queryParam("numOfRows", 300)

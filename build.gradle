@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.2.4'
     id 'io.spring.dependency-management' version '1.1.4'
+    id "me.champeau.jmh" version "0.7.1"
 }
 
 group = 'com.finedust.project'
@@ -42,6 +43,12 @@ dependencies {
     // gson
     implementation 'com.google.code.gson:gson:2.9.0'
 
+    // JUnit Jupiter API
+    implementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.10.1'
+    // JMH dependencies
+    implementation 'org.openjdk.jmh:jmh-core:1.35'
+    implementation 'org.openjdk.jmh:jmh-generator-annprocess:1.35'
+
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
     annotationProcessor 'org.projectlombok:lombok'
@@ -55,6 +62,17 @@ dependencies {
     // Reactive Streams 기본 종속성
     implementation 'org.reactivestreams:reactive-streams:1.0.4'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+
+// https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5
+    implementation group: 'org.apache.httpcomponents.client5', name: 'httpclient5', version: '5.2.1'
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // https://mvnrepository.com/artifact/com.bucket4j/bucket4j-core
+    implementation group: 'com.bucket4j', name: 'bucket4j-core', version: '8.9.0'
+
+//   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml' // XML 파싱 라이브러리 추가
 
     // 테스트를 위한 Reactive Streams TCK 종속성
     testImplementation 'org.reactivestreams:reactive-streams-tck:1.0.4'

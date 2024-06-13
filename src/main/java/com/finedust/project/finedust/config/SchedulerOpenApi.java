@@ -32,7 +32,7 @@ public class SchedulerOpenApi {
 */
 
 
-    public void commonUpdateData() throws UnsupportedEncodingException {
+ public void commonUpdateData() throws UnsupportedEncodingException {
             String[] sidoNames = {"서울", "부산", "대구", "인천", "광주", "대전", "울산", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주", "세종"};
         //String[] sidoNames = {"전국"};
         Flux.fromArray(sidoNames)
@@ -53,17 +53,19 @@ public class SchedulerOpenApi {
 
 
 
-    @Scheduled(fixedRate = 3600000)
+/*    @Scheduled(fixedRate = 3600000)
     public void updateOpenApiData() throws UnsupportedEncodingException {
         commonUpdateData();
-    }
+    }*/
 
 
 
+/*
    @PostConstruct
     public void UpdateOpenApiData() throws UnsupportedEncodingException {
         commonUpdateData();
     }
+*/
 
 /*    @PostConstruct
     public void RestTemplateUpdateOpenApiData() throws UnsupportedEncodingException, JsonProcessingException {

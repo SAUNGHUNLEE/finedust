@@ -38,12 +38,16 @@ public class ApartmentDetailController {
 
 
 
+
+
     @ResponseBody
     @GetMapping(value = "/getAll", produces = "application/json;charset=utf-8")
     public ResponseEntity<String> getRegionInfo() throws UnsupportedEncodingException {
         schedulerOpenApi.commonUpdateData();
         return ResponseEntity.ok("데이터 요청 및 저장이 완료되었습니다.");
     }
+
+
 
 
 
